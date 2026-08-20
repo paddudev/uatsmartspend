@@ -1,0 +1,4 @@
+smartspend/
+__pycache__/
+*.pyc
+.env
