@@ -75,7 +75,7 @@ export default function UserView() {
                   Allowed IP addresses
                 </Typography>
                 {user.ip_addresses?.length ? (
-                  <Stack direction="row" flexWrap="wrap" gap={1}>
+                  <Stack direction="row" sx={{ flexWrap: "wrap", gap: 1 }}>
                     {user.ip_addresses.map((ip) => (
                       <Chip key={ip} label={ip} size="small" />
                     ))}

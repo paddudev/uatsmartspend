@@ -52,7 +52,7 @@ export default function UserGroupView() {
                 Capabilities
               </Typography>
               {selectedCapabilities.length ? (
-                <Stack direction="row" flexWrap="wrap" gap={1}>
+                <Stack direction="row" sx={{ flexWrap: "wrap", gap: 1 }}>
                   {selectedCapabilities.map((cap) => (
                     <Chip key={cap.id} label={cap.description || cap.name} size="small" />
                   ))}

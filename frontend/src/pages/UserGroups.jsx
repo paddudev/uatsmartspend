@@ -60,7 +60,7 @@ export default function UserGroups() {
 
   return (
     <>
-      <Stack direction="row" justifyContent="space-between" alignItems="center" sx={{ mb: 2 }}>
+      <Stack direction="row" sx={{ justifyContent: "space-between", alignItems: "center", mb: 2, width: "100%" }}>
         <Typography variant="h4">User Groups</Typography>
         <Button variant="contained" startIcon={<AddIcon />} onClick={() => navigate("/app/account/groups/new")}>
           Add User Group

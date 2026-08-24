@@ -128,8 +128,8 @@ export default function MainLayout() {
           <Typography variant="h6" noWrap component="div">
             SmartSpend
           </Typography>
-          <Stack direction="row" spacing={2} alignItems="center">
-            <Stack direction="row" spacing={0.5} alignItems="center">
+          <Stack direction="row" spacing={2} sx={{ alignItems: "center" }}>
+            <Stack direction="row" spacing={0.5} sx={{ alignItems: "center" }}>
               <LightModeIcon fontSize="small" />
               <Tooltip title={mode === "dark" ? "Switch to light mode" : "Switch to dark mode"}>
                 <Switch

@@ -103,7 +103,7 @@ export default function NetworkAccessFields({
               At least one IP address is required for limited network access.
             </Typography>
           ) : (
-            <Stack direction="row" flexWrap="wrap" gap={1} sx={{ mt: 1.5 }}>
+            <Stack direction="row" sx={{ flexWrap: "wrap", gap: 1, mt: 1.5 }}>
               {ipAddresses.map((ip) => (
                 <Chip key={ip} label={ip} onDelete={() => handleRemoveIp(ip)} size="small" />
               ))}
