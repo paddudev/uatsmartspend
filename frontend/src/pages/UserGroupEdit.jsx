@@ -71,7 +71,7 @@ export default function UserGroupEdit() {
         Edit user group
       </Typography>
 
-      <Paper sx={{ p: 3, maxWidth: 760 }}>
+      <Paper sx={{ p: 3, width: "100%" }}>
         <Box component="form" onSubmit={handleSubmit} noValidate>
           <Box
             sx={{
