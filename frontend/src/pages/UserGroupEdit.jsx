@@ -71,10 +71,20 @@ export default function UserGroupEdit() {
         Edit user group
       </Typography>
 
-      <Paper sx={{ p: 3, maxWidth: 480 }}>
+      <Paper sx={{ p: 3, maxWidth: 760 }}>
         <Box component="form" onSubmit={handleSubmit} noValidate>
-          <Stack spacing={2}>
-            {error && <Alert severity="error">{error}</Alert>}
+          <Box
+            sx={{
+              display: "grid",
+              gridTemplateColumns: { xs: "1fr", sm: "repeat(2, 1fr)", md: "repeat(3, 1fr)" },
+              gap: 2,
+            }}
+          >
+            {error && (
+              <Box sx={{ gridColumn: "1 / -1" }}>
+                <Alert severity="error">{error}</Alert>
+              </Box>
+            )}
             <TextField
               label="Name"
               value={form.name}
@@ -109,18 +119,20 @@ export default function UserGroupEdit() {
               ))}
             </TextField>
 
-            <CapabilitySelect
-              selectedIds={form.capability_ids}
-              onChange={(ids) => handleChange("capability_ids", ids)}
-            />
+            <Box sx={{ gridColumn: "1 / -1" }}>
+              <CapabilitySelect
+                selectedIds={form.capability_ids}
+                onChange={(ids) => handleChange("capability_ids", ids)}
+              />
+            </Box>
 
-            <Stack direction="row" spacing={2}>
+            <Stack direction="row" spacing={2} sx={{ gridColumn: "1 / -1" }}>
               <Button type="submit" variant="contained" disabled={submitting}>
                 {submitting ? "Saving..." : "Save"}
               </Button>
               <Button onClick={() => navigate(`/app/account/groups/${groupId}`)}>Cancel</Button>
             </Stack>
-          </Stack>
+          </Box>
         </Box>
       </Paper>
     </>

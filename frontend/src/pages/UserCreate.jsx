@@ -74,10 +74,20 @@ export default function UserCreate() {
         Add user
       </Typography>
 
-      <Paper sx={{ p: 3, maxWidth: 480 }}>
+      <Paper sx={{ p: 3, maxWidth: 760 }}>
         <Box component="form" onSubmit={handleSubmit} noValidate>
-          <Stack spacing={2}>
-            {error && <Alert severity="error">{error}</Alert>}
+          <Box
+            sx={{
+              display: "grid",
+              gridTemplateColumns: { xs: "1fr", sm: "repeat(2, 1fr)", md: "repeat(3, 1fr)" },
+              gap: 2,
+            }}
+          >
+            {error && (
+              <Box sx={{ gridColumn: "1 / -1" }}>
+                <Alert severity="error">{error}</Alert>
+              </Box>
+            )}
             <TextField
               label="Username"
               value={form.username}
@@ -124,20 +134,22 @@ export default function UserCreate() {
               ))}
             </TextField>
 
-            <NetworkAccessFields
-              networkAccess={form.network_access}
-              ipAddresses={form.ip_addresses}
-              onNetworkAccessChange={(value) => handleChange("network_access", value)}
-              onIpAddressesChange={(ips) => handleChange("ip_addresses", ips)}
-            />
+            <Box sx={{ gridColumn: "1 / -1" }}>
+              <NetworkAccessFields
+                networkAccess={form.network_access}
+                ipAddresses={form.ip_addresses}
+                onNetworkAccessChange={(value) => handleChange("network_access", value)}
+                onIpAddressesChange={(ips) => handleChange("ip_addresses", ips)}
+              />
+            </Box>
 
-            <Stack direction="row" spacing={2}>
+            <Stack direction="row" spacing={2} sx={{ gridColumn: "1 / -1" }}>
               <Button type="submit" variant="contained" disabled={submitting}>
                 {submitting ? "Creating..." : "Create user"}
               </Button>
               <Button onClick={() => navigate("/app/account")}>Cancel</Button>
             </Stack>
-          </Stack>
+          </Box>
         </Box>
       </Paper>
     </>
