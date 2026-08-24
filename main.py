@@ -1,8 +1,14 @@
-from fastapi import Depends, FastAPI, HTTPException
-from fastapi.middleware.cors import CORSMiddleware  
-from database import session,engine 
+import ipaddress
+
+from fastapi import Depends, FastAPI, HTTPException, Query
+from fastapi.middleware.cors import CORSMiddleware
+from passlib.context import CryptContext
+from database import session,engine
 import database_models
 from sqlalchemy.orm import Session
+
+pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
+MAX_IP_ADDRESSES = 30
 
 app = FastAPI()
 app.add_middleware(CORSMiddleware,
@@ -20,6 +26,43 @@ def get_db():
         yield db
     finally:
         db.close()
+
+def resolve_network_access(network_access: str, ip_addresses: list[str] | None):
+    if network_access not in (database_models.NetworkAccess.OPEN.value, database_models.NetworkAccess.LIMITED.value):
+        raise HTTPException(status_code=400, detail="network_access must be 'open' or 'limited'")
+
+    if network_access == database_models.NetworkAccess.OPEN.value:
+        return network_access, None
+
+    if not ip_addresses:
+        raise HTTPException(status_code=400, detail="At least one IP address is required for limited network access")
+    if len(ip_addresses) > MAX_IP_ADDRESSES:
+        raise HTTPException(status_code=400, detail=f"At most {MAX_IP_ADDRESSES} IP addresses are allowed")
+    for ip in ip_addresses:
+        try:
+            ipaddress.ip_address(ip)
+        except ValueError:
+            raise HTTPException(status_code=400, detail=f"'{ip}' is not a valid IP address")
+
+    return network_access, ip_addresses
+
+def serialize_user(db_user: database_models.User, db: Session):
+    usergroup_description = None
+    if db_user.usergroup_fk:
+        db_usergroup = db.query(database_models.usergroup).filter(database_models.usergroup.id == db_user.usergroup_fk).first()
+        usergroup_description = db_usergroup.description if db_usergroup else None
+
+    return {
+        "id": db_user.id,
+        "username": db_user.username,
+        "email": db_user.email,
+        "full_name": db_user.full_name,
+        "is_active": db_user.is_active,
+        "network_access": db_user.network_access,
+        "ip_addresses": db_user.ip_addresses or [],
+        "usergroup_fk": db_user.usergroup_fk,
+        "usergroup_description": usergroup_description,
+    }
 
 @app.get("/")
 def greet():
@@ -82,39 +125,64 @@ def create_transactions(amount: float, products_services_fk: int, transaction_da
 @app.post("/login")
 def login(username: str, password: str, db: Session = Depends(get_db)):
     db_user = db.query(database_models.User).filter(database_models.User.username == username).first()
-    if not db_user or db_user.hashed_password != password:
+    if not db_user or not pwd_context.verify(password, db_user.hashed_password):
         raise HTTPException(status_code=401, detail="Invalid username or password")
     if not db_user.is_active:
         raise HTTPException(status_code=403, detail="User is deactivated")
-    return {
-        "id": db_user.id,
-        "username": db_user.username,
-        "email": db_user.email,
-        "full_name": db_user.full_name,
-        "is_active": db_user.is_active,
-    }
+    return serialize_user(db_user, db)
 
 @app.get("/users/")
 def read_users(db: Session = Depends(get_db)):
-    return db.query(database_models.User).all()
+    return [serialize_user(u, db) for u in db.query(database_models.User).all()]
 
 @app.get("/users/{user_id}")
 def read_user(user_id: int, db: Session = Depends(get_db)):
     db_user = db.query(database_models.User).filter(database_models.User.id == user_id).first()
     if db_user:
-        return db_user
+        return serialize_user(db_user, db)
     return {"message": "User not found!"}
 
 @app.post("/users/")
-def create_user(username: str, email: str, full_name: str, hashed_password: str, is_active: int = 1, db: Session = Depends(get_db)):
-    db_user = database_models.User(username=username, email=email, full_name=full_name, hashed_password=hashed_password, is_active=is_active)
+def create_user(
+    username: str,
+    email: str,
+    full_name: str,
+    password: str,
+    network_access: str = database_models.NetworkAccess.OPEN.value,
+    ip_addresses: list[str] | None = Query(default=None),
+    usergroup_fk: int | None = None,
+    is_active: int = 1,
+    db: Session = Depends(get_db),
+):
+    network_access, ip_addresses = resolve_network_access(network_access, ip_addresses)
+    db_user = database_models.User(
+        username=username,
+        email=email,
+        full_name=full_name,
+        hashed_password=pwd_context.hash(password),
+        is_active=is_active,
+        network_access=network_access,
+        ip_addresses=ip_addresses,
+        usergroup_fk=usergroup_fk,
+    )
     db.add(db_user)
     db.commit()
     db.refresh(db_user)
-    return db_user
+    return serialize_user(db_user, db)
 
 @app.put("/users/{user_id}")
-def update_user(user_id: int, username: str = None, email: str = None, full_name: str = None, hashed_password: str = None, is_active: int = None, db: Session = Depends(get_db)):
+def update_user(
+    user_id: int,
+    username: str = None,
+    email: str = None,
+    full_name: str = None,
+    password: str = None,
+    network_access: str = None,
+    ip_addresses: list[str] | None = Query(default=None),
+    usergroup_fk: int | None = None,
+    is_active: int = None,
+    db: Session = Depends(get_db),
+):
     db_user = db.query(database_models.User).filter(database_models.User.id == user_id).first()
     if not db_user:
         return {"message": "User not found!"}
@@ -124,13 +192,21 @@ def update_user(user_id: int, username: str = None, email: str = None, full_name
         db_user.email = email
     if full_name is not None:
         db_user.full_name = full_name
-    if hashed_password is not None:
-        db_user.hashed_password = hashed_password
+    if password is not None:
+        db_user.hashed_password = pwd_context.hash(password)
     if is_active is not None:
         db_user.is_active = is_active
+    if usergroup_fk is not None:
+        db_user.usergroup_fk = usergroup_fk
+    if network_access is not None or ip_addresses is not None:
+        effective_network_access = network_access if network_access is not None else db_user.network_access
+        effective_ip_addresses = ip_addresses if ip_addresses is not None else db_user.ip_addresses
+        effective_network_access, effective_ip_addresses = resolve_network_access(effective_network_access, effective_ip_addresses)
+        db_user.network_access = effective_network_access
+        db_user.ip_addresses = effective_ip_addresses
     db.commit()
     db.refresh(db_user)
-    return db_user
+    return serialize_user(db_user, db)
 
 @app.get("/usergroup/")
 def read_usergroups(db: Session = Depends(get_db)):

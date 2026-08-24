@@ -5,31 +5,38 @@ import {
   Box,
   Button,
   FormControlLabel,
+  MenuItem,
   Paper,
   Stack,
   Switch,
   TextField,
   Typography,
 } from "@mui/material";
-import { getUser, updateUser } from "../api/users";
+import { getUser, listUsergroups, updateUser } from "../api/users";
+import NetworkAccessFields from "../components/NetworkAccessFields";
 
 export default function UserEdit() {
   const { userId } = useParams();
   const navigate = useNavigate();
   const [form, setForm] = useState(null);
+  const [usergroups, setUsergroups] = useState([]);
   const [error, setError] = useState("");
   const [submitting, setSubmitting] = useState(false);
 
   useEffect(() => {
-    getUser(userId)
-      .then((u) =>
+    Promise.all([getUser(userId), listUsergroups()])
+      .then(([u, groups]) => {
         setForm({
           username: u.username,
           email: u.email,
           full_name: u.full_name,
           is_active: Boolean(u.is_active),
-        })
-      )
+          usergroup_fk: u.usergroup_fk || "",
+          network_access: u.network_access || "open",
+          ip_addresses: u.ip_addresses || [],
+        });
+        setUsergroups(groups);
+      })
       .catch(() => setError("Unable to load user."));
   }, [userId]);
 
@@ -39,13 +46,25 @@ export default function UserEdit() {
 
   async function handleSubmit(e) {
     e.preventDefault();
+    if (form.network_access === "limited" && form.ip_addresses.length === 0) {
+      setError("Add at least one IP address for limited network access.");
+      return;
+    }
     setSubmitting(true);
     setError("");
     try {
-      await updateUser(userId, { ...form, is_active: form.is_active ? 1 : 0 });
+      await updateUser(userId, {
+        username: form.username,
+        email: form.email,
+        full_name: form.full_name,
+        is_active: form.is_active ? 1 : 0,
+        usergroup_fk: form.usergroup_fk || undefined,
+        network_access: form.network_access,
+        ip_addresses: form.network_access === "limited" ? form.ip_addresses : [],
+      });
       navigate(`/app/account/${userId}`);
-    } catch {
-      setError("Unable to save changes.");
+    } catch (err) {
+      setError(err?.response?.data?.detail || "Unable to save changes.");
     } finally {
       setSubmitting(false);
     }
@@ -86,6 +105,30 @@ export default function UserEdit() {
               required
               fullWidth
             />
+            <TextField
+              select
+              label="User group"
+              value={form.usergroup_fk}
+              onChange={(e) => handleChange("usergroup_fk", e.target.value)}
+              fullWidth
+            >
+              <MenuItem value="">
+                <em>None</em>
+              </MenuItem>
+              {usergroups.map((group) => (
+                <MenuItem key={group.id} value={group.id}>
+                  {group.description || group.name}
+                </MenuItem>
+              ))}
+            </TextField>
+
+            <NetworkAccessFields
+              networkAccess={form.network_access}
+              ipAddresses={form.ip_addresses}
+              onNetworkAccessChange={(value) => handleChange("network_access", value)}
+              onIpAddressesChange={(ips) => handleChange("ip_addresses", ips)}
+            />
+
             <FormControlLabel
               control={
                 <Switch

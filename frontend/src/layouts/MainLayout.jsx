@@ -127,17 +127,19 @@ export default function MainLayout() {
           },
         }}
       >
-        <Toolbar
+        <Toolbar />
+        <Box
           sx={{
             display: "flex",
             justifyContent: collapsed ? "center" : "flex-end",
             px: 1,
+            py: 0.5,
           }}
         >
           <IconButton onClick={toggleCollapsed}>
             {collapsed ? <ChevronRightIcon /> : <ChevronLeftIcon />}
           </IconButton>
-        </Toolbar>
+        </Box>
         <Divider />
         <Box sx={{ overflow: "auto" }}>
           <List>

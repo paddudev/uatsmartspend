@@ -21,16 +21,23 @@ class capabilitymaster(Base):
     description = Column(String)
     tag = Column(String)
     
+class NetworkAccess(enum.Enum):
+    OPEN = "open"
+    LIMITED = "limited"
+
 class User(Base):
     __tablename__ = "users"
     id: Mapped[int] = mapped_column(primary_key=True, index=True)
     username: Mapped[str] = mapped_column(String(50), unique=True, index=True, nullable=False)
     email: Mapped[str] = mapped_column(String(100), unique=True, index=True, nullable=False)
     full_name: Mapped[str] = mapped_column(String(100))
-    hashed_password: Mapped[str]= mapped_column(String(25), nullable=False)
+    hashed_password: Mapped[str] = mapped_column(String(255), nullable=False)
     is_active: Mapped[int] = mapped_column(default=1)
+    network_access: Mapped[str] = mapped_column(String(20), nullable=False, default=NetworkAccess.OPEN.value, server_default=NetworkAccess.OPEN.value)
+    ip_addresses: Mapped[list | None] = mapped_column(JSONB, nullable=True)
+    usergroup_fk: Mapped[int | None] = mapped_column(ForeignKey("usergroup.id"), nullable=True)
 
-    groups: Mapped[list[usergroup]] = relationship(back_populates="user", cascade="all, delete-orphan")
+    groups: Mapped[list[usergroup]] = relationship(back_populates="user", cascade="all, delete-orphan", foreign_keys="usergroup.userid_fk")
 
 class usergroup(Base):
     __tablename__ = "usergroup"
@@ -41,7 +48,7 @@ class usergroup(Base):
     userid_fk: Mapped[int] = mapped_column(ForeignKey("users.id") , nullable=False)
     capabilitymaster_fk: Mapped[dict] = mapped_column(JSONB, nullable=False)
 
-    user: Mapped["User"] = relationship(back_populates="groups")
+    user: Mapped["User"] = relationship(back_populates="groups", foreign_keys=[userid_fk])
     
 class commonmaster(Base):
     __tablename__ = "commonmaster"
