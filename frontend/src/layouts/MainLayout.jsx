@@ -24,6 +24,9 @@ import PeopleIcon from "@mui/icons-material/People";
 import PersonIcon from "@mui/icons-material/Person";
 import GroupsIcon from "@mui/icons-material/Groups";
 import TuneIcon from "@mui/icons-material/Tune";
+import LayersIcon from "@mui/icons-material/Layers";
+import CategoryIcon from "@mui/icons-material/Category";
+import Inventory2Icon from "@mui/icons-material/Inventory2";
 import ReceiptLongIcon from "@mui/icons-material/ReceiptLong";
 import AssessmentIcon from "@mui/icons-material/Assessment";
 import AccountCircle from "@mui/icons-material/AccountCircle";
@@ -50,7 +53,15 @@ const navItems = [
       { label: "User Groups", to: "/app/account/groups", icon: <GroupsIcon /> },
     ],
   },
-  { label: "Master", to: "/app/master", icon: <TuneIcon /> },
+  {
+    label: "Master",
+    icon: <TuneIcon />,
+    children: [
+      { label: "Common Master", to: "/app/master/common", icon: <LayersIcon /> },
+      { label: "Category Master", to: "/app/master/category", icon: <CategoryIcon /> },
+      { label: "Products & Services", to: "/app/master/products", icon: <Inventory2Icon /> },
+    ],
+  },
   { label: "Transaction", to: "/app/transaction", icon: <ReceiptLongIcon /> },
   { label: "Reports", to: "/app/reports", icon: <AssessmentIcon /> },
 ];

@@ -12,7 +12,18 @@ import UserGroups from "./pages/UserGroups";
 import UserGroupView from "./pages/UserGroupView";
 import UserGroupEdit from "./pages/UserGroupEdit";
 import UserGroupCreate from "./pages/UserGroupCreate";
-import Master from "./pages/Master";
+import CommonMasters from "./pages/CommonMasters";
+import CommonMasterCreate from "./pages/CommonMasterCreate";
+import CommonMasterView from "./pages/CommonMasterView";
+import CommonMasterEdit from "./pages/CommonMasterEdit";
+import CategoryMasters from "./pages/CategoryMasters";
+import CategoryMasterCreate from "./pages/CategoryMasterCreate";
+import CategoryMasterView from "./pages/CategoryMasterView";
+import CategoryMasterEdit from "./pages/CategoryMasterEdit";
+import ProductsAndServicesList from "./pages/ProductsAndServicesList";
+import ProductsAndServicesCreate from "./pages/ProductsAndServicesCreate";
+import ProductsAndServicesView from "./pages/ProductsAndServicesView";
+import ProductsAndServicesEdit from "./pages/ProductsAndServicesEdit";
 import Transaction from "./pages/Transaction";
 import Reports from "./pages/Reports";
 
@@ -34,7 +45,18 @@ export default function App() {
           <Route path="account/groups/:groupId/edit" element={<UserGroupEdit />} />
           <Route path="account/:userId" element={<UserView />} />
           <Route path="account/:userId/edit" element={<UserEdit />} />
-          <Route path="master" element={<Master />} />
+          <Route path="master/common" element={<CommonMasters />} />
+          <Route path="master/common/new" element={<CommonMasterCreate />} />
+          <Route path="master/common/:commonMasterId" element={<CommonMasterView />} />
+          <Route path="master/common/:commonMasterId/edit" element={<CommonMasterEdit />} />
+          <Route path="master/category" element={<CategoryMasters />} />
+          <Route path="master/category/new" element={<CategoryMasterCreate />} />
+          <Route path="master/category/:categoryMasterId" element={<CategoryMasterView />} />
+          <Route path="master/category/:categoryMasterId/edit" element={<CategoryMasterEdit />} />
+          <Route path="master/products" element={<ProductsAndServicesList />} />
+          <Route path="master/products/new" element={<ProductsAndServicesCreate />} />
+          <Route path="master/products/:productId" element={<ProductsAndServicesView />} />
+          <Route path="master/products/:productId/edit" element={<ProductsAndServicesEdit />} />
           <Route path="transaction" element={<Transaction />} />
           <Route path="reports" element={<Reports />} />
         </Route>

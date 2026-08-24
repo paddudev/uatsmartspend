@@ -69,20 +69,186 @@ def serialize_user(db_user: database_models.User, db: Session):
 def greet():
     return "Welcome, SmartSpend!"
 
+def serialize_commonmaster(db_commonmaster: database_models.commonmaster, db: Session):
+    owner = db.query(database_models.User).filter(database_models.User.id == db_commonmaster.userid_fk).first()
+    return {
+        "id": db_commonmaster.id,
+        "name": db_commonmaster.name,
+        "description": db_commonmaster.description,
+        "tag": db_commonmaster.tag,
+        "userid_fk": db_commonmaster.userid_fk,
+        "owner_username": owner.username if owner else None,
+    }
+
+def serialize_categorymaster(db_categorymaster: database_models.categorymaster, db: Session):
+    common = db.query(database_models.commonmaster).filter(database_models.commonmaster.id == db_categorymaster.commonmaster_fk).first()
+    owner = db.query(database_models.User).filter(database_models.User.id == db_categorymaster.userid_fk).first()
+    return {
+        "id": db_categorymaster.id,
+        "name": db_categorymaster.name,
+        "commonmaster_fk": db_categorymaster.commonmaster_fk,
+        "commonmaster_name": common.name if common else None,
+        "tag": db_categorymaster.tag,
+        "userid_fk": db_categorymaster.userid_fk,
+        "owner_username": owner.username if owner else None,
+    }
+
+def serialize_productsandservices(db_p: database_models.productsandservices, db: Session):
+    category = db.query(database_models.categorymaster).filter(database_models.categorymaster.id == db_p.categorymaster_fk).first()
+    owner = db.query(database_models.User).filter(database_models.User.id == db_p.userid_fk).first()
+    return {
+        "id": db_p.id,
+        "name": db_p.name,
+        "description": db_p.description,
+        "categorymaster_fk": db_p.categorymaster_fk,
+        "category_name": category.name if category else None,
+        "userid_fk": db_p.userid_fk,
+        "owner_username": owner.username if owner else None,
+    }
+
 @app.get("/commonmaster/")
-def read_items(db: Session = Depends(get_db)):
-    db_commonmaster = db.query(database_models.commonmaster).all()
-    return db_commonmaster
+def read_commonmasters(db: Session = Depends(get_db)):
+    return [serialize_commonmaster(c, db) for c in db.query(database_models.commonmaster).all()]
+
+@app.get("/commonmaster/{commonmaster_id}")
+def read_commonmaster(commonmaster_id: int, db: Session = Depends(get_db)):
+    db_commonmaster = db.query(database_models.commonmaster).filter(database_models.commonmaster.id == commonmaster_id).first()
+    if db_commonmaster:
+        return serialize_commonmaster(db_commonmaster, db)
+    return {"message": "Common master not found!"}
+
+@app.post("/commonmaster/")
+def create_commonmaster(name: str, userid_fk: int, description: str = None, tag: str = None, db: Session = Depends(get_db)):
+    db_commonmaster = database_models.commonmaster(name=name, description=description, tag=tag, userid_fk=userid_fk)
+    db.add(db_commonmaster)
+    db.commit()
+    db.refresh(db_commonmaster)
+    return serialize_commonmaster(db_commonmaster, db)
+
+@app.put("/commonmaster/{commonmaster_id}")
+def update_commonmaster(commonmaster_id: int, name: str = None, description: str = None, tag: str = None, userid_fk: int = None, db: Session = Depends(get_db)):
+    db_commonmaster = db.query(database_models.commonmaster).filter(database_models.commonmaster.id == commonmaster_id).first()
+    if not db_commonmaster:
+        return {"message": "Common master not found!"}
+    if name is not None:
+        db_commonmaster.name = name
+    if description is not None:
+        db_commonmaster.description = description
+    if tag is not None:
+        db_commonmaster.tag = tag
+    if userid_fk is not None:
+        db_commonmaster.userid_fk = userid_fk
+    db.commit()
+    db.refresh(db_commonmaster)
+    return serialize_commonmaster(db_commonmaster, db)
+
+@app.delete("/commonmaster/{commonmaster_id}")
+def delete_commonmaster(commonmaster_id: int, db: Session = Depends(get_db)):
+    db_commonmaster = db.query(database_models.commonmaster).filter(database_models.commonmaster.id == commonmaster_id).first()
+    if not db_commonmaster:
+        return {"message": "Common master not found!"}
+    in_use = db.query(database_models.categorymaster).filter(database_models.categorymaster.commonmaster_fk == commonmaster_id).first()
+    if in_use:
+        raise HTTPException(status_code=400, detail="This common master is still used by one or more categories and can't be deleted")
+    db.delete(db_commonmaster)
+    db.commit()
+    return {"message": "Common master deleted"}
 
 @app.get("/categorymaster/")
-def read_items(db: Session = Depends(get_db)):
-    db_categorymaster = db.query(database_models.categorymaster).all()
-    return db_categorymaster
+def read_categorymasters(db: Session = Depends(get_db)):
+    return [serialize_categorymaster(c, db) for c in db.query(database_models.categorymaster).all()]
+
+@app.get("/categorymaster/{categorymaster_id}")
+def read_categorymaster(categorymaster_id: int, db: Session = Depends(get_db)):
+    db_categorymaster = db.query(database_models.categorymaster).filter(database_models.categorymaster.id == categorymaster_id).first()
+    if db_categorymaster:
+        return serialize_categorymaster(db_categorymaster, db)
+    return {"message": "Category master not found!"}
+
+@app.post("/categorymaster/")
+def create_categorymaster(name: str, commonmaster_fk: int, userid_fk: int, tag: str = None, db: Session = Depends(get_db)):
+    db_categorymaster = database_models.categorymaster(name=name, commonmaster_fk=commonmaster_fk, tag=tag, userid_fk=userid_fk)
+    db.add(db_categorymaster)
+    db.commit()
+    db.refresh(db_categorymaster)
+    return serialize_categorymaster(db_categorymaster, db)
+
+@app.put("/categorymaster/{categorymaster_id}")
+def update_categorymaster(categorymaster_id: int, name: str = None, commonmaster_fk: int = None, tag: str = None, userid_fk: int = None, db: Session = Depends(get_db)):
+    db_categorymaster = db.query(database_models.categorymaster).filter(database_models.categorymaster.id == categorymaster_id).first()
+    if not db_categorymaster:
+        return {"message": "Category master not found!"}
+    if name is not None:
+        db_categorymaster.name = name
+    if commonmaster_fk is not None:
+        db_categorymaster.commonmaster_fk = commonmaster_fk
+    if tag is not None:
+        db_categorymaster.tag = tag
+    if userid_fk is not None:
+        db_categorymaster.userid_fk = userid_fk
+    db.commit()
+    db.refresh(db_categorymaster)
+    return serialize_categorymaster(db_categorymaster, db)
+
+@app.delete("/categorymaster/{categorymaster_id}")
+def delete_categorymaster(categorymaster_id: int, db: Session = Depends(get_db)):
+    db_categorymaster = db.query(database_models.categorymaster).filter(database_models.categorymaster.id == categorymaster_id).first()
+    if not db_categorymaster:
+        return {"message": "Category master not found!"}
+    in_use = db.query(database_models.productsandservices).filter(database_models.productsandservices.categorymaster_fk == categorymaster_id).first()
+    if in_use:
+        raise HTTPException(status_code=400, detail="This category is still used by one or more products/services and can't be deleted")
+    db.delete(db_categorymaster)
+    db.commit()
+    return {"message": "Category master deleted"}
 
 @app.get("/productsandservices/")
-def read_items(db: Session = Depends(get_db)):
-    db_productsandservices = db.query(database_models.productsandservices).all()
-    return db_productsandservices
+def read_productsandservices_list(db: Session = Depends(get_db)):
+    return [serialize_productsandservices(p, db) for p in db.query(database_models.productsandservices).all()]
+
+@app.get("/productsandservices/{productsandservices_id}")
+def read_productsandservices(productsandservices_id: int, db: Session = Depends(get_db)):
+    db_p = db.query(database_models.productsandservices).filter(database_models.productsandservices.id == productsandservices_id).first()
+    if db_p:
+        return serialize_productsandservices(db_p, db)
+    return {"message": "Product/service not found!"}
+
+@app.post("/productsandservices/")
+def create_productsandservices(name: str, categorymaster_fk: int, userid_fk: int, description: str = None, db: Session = Depends(get_db)):
+    db_productsandservices = database_models.productsandservices(name=name, categorymaster_fk=categorymaster_fk, description=description, userid_fk=userid_fk)
+    db.add(db_productsandservices)
+    db.commit()
+    db.refresh(db_productsandservices)
+    return serialize_productsandservices(db_productsandservices, db)
+
+@app.put("/productsandservices/{productsandservices_id}")
+def update_productsandservices(productsandservices_id: int, name: str = None, categorymaster_fk: int = None, description: str = None, userid_fk: int = None, db: Session = Depends(get_db)):
+    db_p = db.query(database_models.productsandservices).filter(database_models.productsandservices.id == productsandservices_id).first()
+    if not db_p:
+        return {"message": "Product/service not found!"}
+    if name is not None:
+        db_p.name = name
+    if categorymaster_fk is not None:
+        db_p.categorymaster_fk = categorymaster_fk
+    if description is not None:
+        db_p.description = description
+    if userid_fk is not None:
+        db_p.userid_fk = userid_fk
+    db.commit()
+    db.refresh(db_p)
+    return serialize_productsandservices(db_p, db)
+
+@app.delete("/productsandservices/{productsandservices_id}")
+def delete_productsandservices(productsandservices_id: int, db: Session = Depends(get_db)):
+    db_p = db.query(database_models.productsandservices).filter(database_models.productsandservices.id == productsandservices_id).first()
+    if not db_p:
+        return {"message": "Product/service not found!"}
+    in_use = db.query(database_models.transactions).filter(database_models.transactions.products_services_fk == productsandservices_id).first()
+    if in_use:
+        raise HTTPException(status_code=400, detail="This product/service is still used by one or more transactions and can't be deleted")
+    db.delete(db_p)
+    db.commit()
+    return {"message": "Product/service deleted"}
 
 @app.get("/transactions/{tnx_number}")
 def read_items(tnx_number = str, db: Session = Depends(get_db)):
@@ -90,30 +256,6 @@ def read_items(tnx_number = str, db: Session = Depends(get_db)):
     if db_transactions:
         return db_transactions
     return {"message": "Transaction not found!"}
-
-@app.post("/commonmaster/")
-def create_commonmaster(name: str, description: str = None, tag: str = None, userid_fk: int = None, db: Session = Depends(get_db)):
-    db_commonmaster = database_models.commonmaster(name=name, description=description, tag=tag, userid_fk=userid_fk)
-    db.add(db_commonmaster)
-    db.commit()
-    db.refresh(db_commonmaster)
-    return db_commonmaster
-
-@app.post("/categorymaster/")
-def create_categorymaster(name: str, commonmaster_fk: int, tag: str = None, userid_fk: int = None, db: Session = Depends(get_db)):
-    db_categorymaster = database_models.categorymaster(name=name, commonmaster_fk=commonmaster_fk, tag=tag, userid_fk=userid_fk)
-    db.add(db_categorymaster)
-    db.commit()
-    db.refresh(db_categorymaster)
-    return db_categorymaster
-
-@app.post("/productsandservices/")
-def create_productsandservices(name: str, categorymaster_fk: int, description: str = None, userid_fk: int = None, db: Session = Depends(get_db)):
-    db_productsandservices = database_models.productsandservices(name=name, categorymaster_fk=categorymaster_fk, description=description,userid_fk=userid_fk)
-    db.add(db_productsandservices)
-    db.commit()
-    db.refresh(db_productsandservices)
-    return db_productsandservices
 
 @app.post("/transactions/")
 def create_transactions(amount: float, products_services_fk: int, transaction_date: str, userid_fk: int, note: str = None, db: Session = Depends(get_db)):
