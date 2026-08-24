@@ -1,4 +1,4 @@
-from fastapi import Depends, FastAPI
+from fastapi import Depends, FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware  
 from database import session,engine 
 import database_models
@@ -78,6 +78,21 @@ def create_transactions(amount: float, products_services_fk: int, transaction_da
     db.commit()
     db.refresh(db_transactions)
     return db_transactions
+
+@app.post("/login")
+def login(username: str, password: str, db: Session = Depends(get_db)):
+    db_user = db.query(database_models.User).filter(database_models.User.username == username).first()
+    if not db_user or db_user.hashed_password != password:
+        raise HTTPException(status_code=401, detail="Invalid username or password")
+    if not db_user.is_active:
+        raise HTTPException(status_code=403, detail="User is deactivated")
+    return {
+        "id": db_user.id,
+        "username": db_user.username,
+        "email": db_user.email,
+        "full_name": db_user.full_name,
+        "is_active": db_user.is_active,
+    }
 
 @app.get("/users/")
 def read_users(db: Session = Depends(get_db)):
