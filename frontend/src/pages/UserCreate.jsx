@@ -10,7 +10,8 @@ import {
   TextField,
   Typography,
 } from "@mui/material";
-import { createUser, listUsergroups } from "../api/users";
+import { createUser } from "../api/users";
+import { listUsergroups } from "../api/usergroups";
 import NetworkAccessFields from "../components/NetworkAccessFields";
 
 const emptyForm = {

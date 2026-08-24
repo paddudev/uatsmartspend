@@ -41,7 +41,3 @@ export function updateUser(userId, fields) {
 export function deactivateUser(userId) {
   return updateUser(userId, { is_active: 0 });
 }
-
-export function listUsergroups() {
-  return apiClient.get("/usergroup/").then((res) => res.data);
-}

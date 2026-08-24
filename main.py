@@ -5,6 +5,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from passlib.context import CryptContext
 from database import session,engine
 import database_models
+from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
 pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
@@ -208,24 +209,54 @@ def update_user(
     db.refresh(db_user)
     return serialize_user(db_user, db)
 
+def resolve_capabilitymaster_fk(capabilitymaster_fk: dict, db: Session):
+    capability_ids = capabilitymaster_fk.get("capability_ids", []) if capabilitymaster_fk else []
+    if not isinstance(capability_ids, list):
+        raise HTTPException(status_code=400, detail="capability_ids must be a list")
+    valid_count = (
+        db.query(database_models.capabilitymaster)
+        .filter(database_models.capabilitymaster.id.in_(capability_ids))
+        .count()
+        if capability_ids
+        else 0
+    )
+    if valid_count != len(set(capability_ids)):
+        raise HTTPException(status_code=400, detail="One or more capability ids are invalid")
+    return {"capability_ids": capability_ids}
+
+def serialize_usergroup(db_usergroup: database_models.usergroup, db: Session):
+    owner = db.query(database_models.User).filter(database_models.User.id == db_usergroup.userid_fk).first()
+    capability_ids = (db_usergroup.capabilitymaster_fk or {}).get("capability_ids", [])
+    return {
+        "id": db_usergroup.id,
+        "name": db_usergroup.name,
+        "description": db_usergroup.description,
+        "tag": db_usergroup.tag,
+        "userid_fk": db_usergroup.userid_fk,
+        "owner_username": owner.username if owner else None,
+        "capabilitymaster_fk": db_usergroup.capabilitymaster_fk,
+        "capability_ids": capability_ids,
+    }
+
 @app.get("/usergroup/")
 def read_usergroups(db: Session = Depends(get_db)):
-    return db.query(database_models.usergroup).all()
+    return [serialize_usergroup(g, db) for g in db.query(database_models.usergroup).all()]
 
 @app.get("/usergroup/{usergroup_id}")
 def read_usergroup(usergroup_id: int, db: Session = Depends(get_db)):
     db_usergroup = db.query(database_models.usergroup).filter(database_models.usergroup.id == usergroup_id).first()
     if db_usergroup:
-        return db_usergroup
+        return serialize_usergroup(db_usergroup, db)
     return {"message": "User group not found!"}
 
 @app.post("/usergroup/")
 def create_usergroup(name: str, userid_fk: int, capabilitymaster_fk: dict, description: str = None, tag: str = None, db: Session = Depends(get_db)):
+    capabilitymaster_fk = resolve_capabilitymaster_fk(capabilitymaster_fk, db)
     db_usergroup = database_models.usergroup(name=name, description=description, tag=tag, userid_fk=userid_fk, capabilitymaster_fk=capabilitymaster_fk)
     db.add(db_usergroup)
     db.commit()
     db.refresh(db_usergroup)
-    return db_usergroup
+    return serialize_usergroup(db_usergroup, db)
 
 @app.put("/usergroup/{usergroup_id}")
 def update_usergroup(usergroup_id: int, name: str = None, description: str = None, tag: str = None, userid_fk: int = None, capabilitymaster_fk: dict = None, db: Session = Depends(get_db)):
@@ -241,10 +272,23 @@ def update_usergroup(usergroup_id: int, name: str = None, description: str = Non
     if userid_fk is not None:
         db_usergroup.userid_fk = userid_fk
     if capabilitymaster_fk is not None:
-        db_usergroup.capabilitymaster_fk = capabilitymaster_fk
+        db_usergroup.capabilitymaster_fk = resolve_capabilitymaster_fk(capabilitymaster_fk, db)
     db.commit()
     db.refresh(db_usergroup)
-    return db_usergroup
+    return serialize_usergroup(db_usergroup, db)
+
+@app.delete("/usergroup/{usergroup_id}")
+def delete_usergroup(usergroup_id: int, db: Session = Depends(get_db)):
+    db_usergroup = db.query(database_models.usergroup).filter(database_models.usergroup.id == usergroup_id).first()
+    if not db_usergroup:
+        return {"message": "User group not found!"}
+    try:
+        db.delete(db_usergroup)
+        db.commit()
+    except IntegrityError:
+        db.rollback()
+        raise HTTPException(status_code=400, detail="This user group is still assigned to one or more users and can't be deleted")
+    return {"message": "User group deleted"}
 
 @app.get("/capabilitymaster/")
 def read_capabilitymasters(db: Session = Depends(get_db)):

@@ -1,8 +1,9 @@
 import { useState } from "react";
-import { NavLink, Outlet, useNavigate } from "react-router-dom";
+import { NavLink, Outlet, useLocation, useNavigate } from "react-router-dom";
 import {
   AppBar,
   Box,
+  Collapse,
   Divider,
   Drawer,
   IconButton,
@@ -20,6 +21,8 @@ import {
 } from "@mui/material";
 import DashboardIcon from "@mui/icons-material/Dashboard";
 import PeopleIcon from "@mui/icons-material/People";
+import PersonIcon from "@mui/icons-material/Person";
+import GroupsIcon from "@mui/icons-material/Groups";
 import TuneIcon from "@mui/icons-material/Tune";
 import ReceiptLongIcon from "@mui/icons-material/ReceiptLong";
 import AssessmentIcon from "@mui/icons-material/Assessment";
@@ -28,6 +31,8 @@ import LightModeIcon from "@mui/icons-material/LightMode";
 import DarkModeIcon from "@mui/icons-material/DarkMode";
 import ChevronLeftIcon from "@mui/icons-material/ChevronLeft";
 import ChevronRightIcon from "@mui/icons-material/ChevronRight";
+import ExpandLessIcon from "@mui/icons-material/ExpandLess";
+import ExpandMoreIcon from "@mui/icons-material/ExpandMore";
 import { useAuth } from "../auth/AuthContext";
 import { useColorMode } from "../theme/ColorModeContext";
 
@@ -37,20 +42,48 @@ const COLLAPSE_STORAGE_KEY = "smartspend_drawer_collapsed";
 
 const navItems = [
   { label: "Dashboard", to: "/app/dashboard", icon: <DashboardIcon /> },
-  { label: "Account", to: "/app/account", icon: <PeopleIcon /> },
+  {
+    label: "Account",
+    icon: <PeopleIcon />,
+    children: [
+      { label: "Users", to: "/app/account", icon: <PersonIcon /> },
+      { label: "User Groups", to: "/app/account/groups", icon: <GroupsIcon /> },
+    ],
+  },
   { label: "Master", to: "/app/master", icon: <TuneIcon /> },
   { label: "Transaction", to: "/app/transaction", icon: <ReceiptLongIcon /> },
   { label: "Reports", to: "/app/reports", icon: <AssessmentIcon /> },
 ];
 
+// Among a group's children, the active one is whichever `to` is the longest
+// matching prefix of the current path — so "/app/account/groups/5" resolves
+// to "User Groups" rather than also matching the shorter "/app/account" (Users).
+function activeChildTo(pathname, children) {
+  const matches = children.filter(
+    (child) => pathname === child.to || pathname.startsWith(`${child.to}/`)
+  );
+  matches.sort((a, b) => b.to.length - a.to.length);
+  return matches[0]?.to;
+}
+
 export default function MainLayout() {
   const { user, logout } = useAuth();
   const { mode, toggleColorMode } = useColorMode();
   const navigate = useNavigate();
+  const location = useLocation();
   const [anchorEl, setAnchorEl] = useState(null);
   const [collapsed, setCollapsed] = useState(
     () => localStorage.getItem(COLLAPSE_STORAGE_KEY) === "1"
   );
+  const [openGroups, setOpenGroups] = useState(() => {
+    const initial = {};
+    navItems.forEach((item) => {
+      if (item.children && activeChildTo(location.pathname, item.children)) {
+        initial[item.label] = true;
+      }
+    });
+    return initial;
+  });
 
   function handleLogout() {
     setAnchorEl(null);
@@ -66,7 +99,27 @@ export default function MainLayout() {
     });
   }
 
+  function handleGroupClick(label) {
+    if (collapsed) {
+      toggleCollapsed();
+      setOpenGroups((prev) => ({ ...prev, [label]: true }));
+    } else {
+      setOpenGroups((prev) => ({ ...prev, [label]: !prev[label] }));
+    }
+  }
+
   const currentDrawerWidth = collapsed ? collapsedWidth : drawerWidth;
+
+  const leafSx = {
+    minHeight: 48,
+    justifyContent: collapsed ? "center" : "flex-start",
+    px: 2.5,
+    "&.active": {
+      bgcolor: "action.selected",
+      borderRight: 3,
+      borderColor: "primary.main",
+    },
+  };
 
   return (
     <Box sx={{ display: "flex" }}>
@@ -143,36 +196,78 @@ export default function MainLayout() {
         <Divider />
         <Box sx={{ overflow: "auto" }}>
           <List>
-            {navItems.map((item) => (
-              <ListItemButton
-                key={item.to}
-                component={NavLink}
-                to={item.to}
-                sx={{
-                  minHeight: 48,
-                  justifyContent: collapsed ? "center" : "flex-start",
-                  px: 2.5,
-                  "&.active": {
-                    bgcolor: "action.selected",
-                    borderRight: 3,
-                    borderColor: "primary.main",
-                  },
-                }}
-              >
-                <Tooltip title={collapsed ? item.label : ""} placement="right">
-                  <ListItemIcon
+            {navItems.map((item) => {
+              if (!item.children) {
+                return (
+                  <ListItemButton key={item.to} component={NavLink} to={item.to} sx={leafSx}>
+                    <Tooltip title={collapsed ? item.label : ""} placement="right">
+                      <ListItemIcon sx={{ minWidth: 0, mr: collapsed ? 0 : 2, justifyContent: "center" }}>
+                        {item.icon}
+                      </ListItemIcon>
+                    </Tooltip>
+                    {!collapsed && <ListItemText primary={item.label} />}
+                  </ListItemButton>
+                );
+              }
+
+              const activeTo = activeChildTo(location.pathname, item.children);
+              const isOpen = Boolean(openGroups[item.label]);
+
+              return (
+                <Box key={item.label}>
+                  <ListItemButton
+                    onClick={() => handleGroupClick(item.label)}
                     sx={{
-                      minWidth: 0,
-                      mr: collapsed ? 0 : 2,
-                      justifyContent: "center",
+                      minHeight: 48,
+                      justifyContent: collapsed ? "center" : "flex-start",
+                      px: 2.5,
+                      ...(activeTo && {
+                        bgcolor: "action.hover",
+                      }),
                     }}
                   >
-                    {item.icon}
-                  </ListItemIcon>
-                </Tooltip>
-                {!collapsed && <ListItemText primary={item.label} />}
-              </ListItemButton>
-            ))}
+                    <Tooltip title={collapsed ? item.label : ""} placement="right">
+                      <ListItemIcon sx={{ minWidth: 0, mr: collapsed ? 0 : 2, justifyContent: "center" }}>
+                        {item.icon}
+                      </ListItemIcon>
+                    </Tooltip>
+                    {!collapsed && (
+                      <>
+                        <ListItemText primary={item.label} />
+                        {isOpen ? <ExpandLessIcon fontSize="small" /> : <ExpandMoreIcon fontSize="small" />}
+                      </>
+                    )}
+                  </ListItemButton>
+                  <Collapse in={isOpen && !collapsed} timeout="auto" unmountOnExit>
+                    <List component="div" disablePadding>
+                      {item.children.map((child) => (
+                        <ListItemButton
+                          key={child.to}
+                          component={NavLink}
+                          to={child.to}
+                          sx={{
+                            minHeight: 48,
+                            justifyContent: "flex-start",
+                            px: 2.5,
+                            pl: 4.5,
+                            ...(child.to === activeTo && {
+                              bgcolor: "action.selected",
+                              borderRight: 3,
+                              borderColor: "primary.main",
+                            }),
+                          }}
+                        >
+                          <ListItemIcon sx={{ minWidth: 0, mr: 2, justifyContent: "center" }}>
+                            {child.icon}
+                          </ListItemIcon>
+                          <ListItemText primary={child.label} />
+                        </ListItemButton>
+                      ))}
+                    </List>
+                  </Collapse>
+                </Box>
+              );
+            })}
           </List>
         </Box>
       </Drawer>

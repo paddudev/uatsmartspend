@@ -12,7 +12,8 @@ import {
   TextField,
   Typography,
 } from "@mui/material";
-import { getUser, listUsergroups, updateUser } from "../api/users";
+import { getUser, updateUser } from "../api/users";
+import { listUsergroups } from "../api/usergroups";
 import NetworkAccessFields from "../components/NetworkAccessFields";
 
 export default function UserEdit() {

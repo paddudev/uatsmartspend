@@ -8,6 +8,10 @@ import Account from "./pages/Account";
 import UserView from "./pages/UserView";
 import UserEdit from "./pages/UserEdit";
 import UserCreate from "./pages/UserCreate";
+import UserGroups from "./pages/UserGroups";
+import UserGroupView from "./pages/UserGroupView";
+import UserGroupEdit from "./pages/UserGroupEdit";
+import UserGroupCreate from "./pages/UserGroupCreate";
 import Master from "./pages/Master";
 import Transaction from "./pages/Transaction";
 import Reports from "./pages/Reports";
@@ -24,6 +28,10 @@ export default function App() {
           <Route path="dashboard" element={<Dashboard />} />
           <Route path="account" element={<Account />} />
           <Route path="account/new" element={<UserCreate />} />
+          <Route path="account/groups" element={<UserGroups />} />
+          <Route path="account/groups/new" element={<UserGroupCreate />} />
+          <Route path="account/groups/:groupId" element={<UserGroupView />} />
+          <Route path="account/groups/:groupId/edit" element={<UserGroupEdit />} />
           <Route path="account/:userId" element={<UserView />} />
           <Route path="account/:userId/edit" element={<UserEdit />} />
           <Route path="master" element={<Master />} />
