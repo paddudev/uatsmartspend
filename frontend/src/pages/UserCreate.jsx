@@ -43,6 +43,10 @@ export default function UserCreate() {
 
   async function handleSubmit(e) {
     e.preventDefault();
+    if (!form.usergroup_fk) {
+      setError("Select a user group.");
+      return;
+    }
     if (form.network_access === "limited" && form.ip_addresses.length === 0) {
       setError("Add at least one IP address for limited network access.");
       return;
@@ -57,7 +61,7 @@ export default function UserCreate() {
         password: form.password,
         network_access: form.network_access,
         ip_addresses: form.network_access === "limited" ? form.ip_addresses : undefined,
-        usergroup_fk: form.usergroup_fk || undefined,
+        usergroup_fk: form.usergroup_fk,
         is_active: 1,
       });
       navigate("/app/account");
@@ -99,6 +103,7 @@ export default function UserCreate() {
               label="Full name"
               value={form.full_name}
               onChange={(e) => handleChange("full_name", e.target.value)}
+              required
               fullWidth
             />
             <TextField
@@ -122,11 +127,9 @@ export default function UserCreate() {
               label="User group"
               value={form.usergroup_fk}
               onChange={(e) => handleChange("usergroup_fk", e.target.value)}
+              required
               fullWidth
             >
-              <MenuItem value="">
-                <em>None</em>
-              </MenuItem>
               {usergroups.map((group) => (
                 <MenuItem key={group.id} value={group.id}>
                   {group.description || group.name}

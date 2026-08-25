@@ -47,6 +47,13 @@ def resolve_network_access(network_access: str, ip_addresses: list[str] | None):
 
     return network_access, ip_addresses
 
+def resolve_usergroup_fk(usergroup_fk: int | None, db: Session):
+    if usergroup_fk is None:
+        raise HTTPException(status_code=400, detail="usergroup_fk is required")
+    if not db.query(database_models.usergroup).filter(database_models.usergroup.id == usergroup_fk).first():
+        raise HTTPException(status_code=400, detail="usergroup_fk does not reference an existing user group")
+    return usergroup_fk
+
 def serialize_user(db_user: database_models.User, db: Session):
     usergroup_description = None
     capabilities = []
@@ -298,12 +305,13 @@ def create_user(
     email: str,
     full_name: str,
     password: str,
+    usergroup_fk: int,
     network_access: str = database_models.NetworkAccess.OPEN.value,
     ip_addresses: list[str] | None = Query(default=None),
-    usergroup_fk: int | None = None,
     is_active: int = 1,
     db: Session = Depends(get_db),
 ):
+    usergroup_fk = resolve_usergroup_fk(usergroup_fk, db)
     network_access, ip_addresses = resolve_network_access(network_access, ip_addresses)
     db_user = database_models.User(
         username=username,
@@ -346,8 +354,8 @@ def update_user(
         db_user.hashed_password = pwd_context.hash(password)
     if is_active is not None:
         db_user.is_active = is_active
-    if usergroup_fk is not None:
-        db_user.usergroup_fk = usergroup_fk
+    effective_usergroup_fk = usergroup_fk if usergroup_fk is not None else db_user.usergroup_fk
+    db_user.usergroup_fk = resolve_usergroup_fk(effective_usergroup_fk, db)
     if network_access is not None or ip_addresses is not None:
         effective_network_access = network_access if network_access is not None else db_user.network_access
         effective_ip_addresses = ip_addresses if ip_addresses is not None else db_user.ip_addresses

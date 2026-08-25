@@ -35,7 +35,7 @@ class User(Base):
     is_active: Mapped[int] = mapped_column(default=1)
     network_access: Mapped[str] = mapped_column(String(20), nullable=False, default=NetworkAccess.OPEN.value, server_default=NetworkAccess.OPEN.value)
     ip_addresses: Mapped[list | None] = mapped_column(JSONB, nullable=True)
-    usergroup_fk: Mapped[int | None] = mapped_column(ForeignKey("usergroup.id"), nullable=True)
+    usergroup_fk: Mapped[int] = mapped_column(ForeignKey("usergroup.id"), nullable=False)
 
     groups: Mapped[list[usergroup]] = relationship(back_populates="user", cascade="all, delete-orphan", foreign_keys="usergroup.userid_fk")
 
