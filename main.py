@@ -1,3 +1,5 @@
+import calendar
+import datetime
 import ipaddress
 
 from fastapi import Depends, FastAPI, HTTPException, Query
@@ -46,6 +48,26 @@ def resolve_network_access(network_access: str, ip_addresses: list[str] | None):
             raise HTTPException(status_code=400, detail=f"'{ip}' is not a valid IP address")
 
     return network_access, ip_addresses
+
+def months_ago(d: datetime.date, months: int) -> datetime.date:
+    month_index = d.month - 1 - months
+    year = d.year + month_index // 12
+    month = month_index % 12 + 1
+    day = min(d.day, calendar.monthrange(year, month)[1])
+    return datetime.date(year, month, day)
+
+def resolve_transaction_date(transaction_date: str) -> str:
+    try:
+        parsed = datetime.date.fromisoformat(transaction_date)
+    except ValueError:
+        raise HTTPException(status_code=400, detail="transaction_date must be in YYYY-MM-DD format")
+    today = datetime.date.today()
+    earliest = months_ago(today, 3)
+    if parsed > today:
+        raise HTTPException(status_code=400, detail="transaction_date cannot be in the future")
+    if parsed < earliest:
+        raise HTTPException(status_code=400, detail="transaction_date cannot be more than 3 months old")
+    return transaction_date
 
 def resolve_usergroup_fk(usergroup_fk: int | None, db: Session):
     if usergroup_fk is None:
@@ -264,20 +286,87 @@ def delete_productsandservices(productsandservices_id: int, db: Session = Depend
     db.commit()
     return {"message": "Product/service deleted"}
 
-@app.get("/transactions/{tnx_number}")
-def read_items(tnx_number = str, db: Session = Depends(get_db)):
-    db_transactions = db.query(database_models.transactions).filter(database_models.transactions.id == tnx_number).first()
+def resolve_products_services_fk(products_services_fk: int, db: Session):
+    if not db.query(database_models.productsandservices).filter(database_models.productsandservices.id == products_services_fk).first():
+        raise HTTPException(status_code=400, detail="products_services_fk does not reference an existing product/service")
+    return products_services_fk
+
+def serialize_transaction(db_t: database_models.transactions, db: Session):
+    product = db.query(database_models.productsandservices).filter(database_models.productsandservices.id == db_t.products_services_fk).first()
+    category = None
+    common = None
+    if product:
+        category = db.query(database_models.categorymaster).filter(database_models.categorymaster.id == product.categorymaster_fk).first()
+        if category:
+            common = db.query(database_models.commonmaster).filter(database_models.commonmaster.id == category.commonmaster_fk).first()
+    owner = db.query(database_models.User).filter(database_models.User.id == db_t.userid_fk).first()
+    return {
+        "id": db_t.id,
+        "amount": db_t.amount,
+        "transaction_date": db_t.transaction_date,
+        "note": db_t.note,
+        "products_services_fk": db_t.products_services_fk,
+        "product_name": product.name if product else None,
+        "categorymaster_fk": category.id if category else None,
+        "category_name": category.name if category else None,
+        "commonmaster_fk": common.id if common else None,
+        "commonmaster_name": common.name if common else None,
+        "userid_fk": db_t.userid_fk,
+        "owner_username": owner.username if owner else None,
+    }
+
+@app.get("/transactions/")
+def read_transactions(db: Session = Depends(get_db)):
+    return [serialize_transaction(t, db) for t in db.query(database_models.transactions).all()]
+
+@app.get("/transactions/{transaction_id}")
+def read_transaction(transaction_id: int, db: Session = Depends(get_db)):
+    db_transactions = db.query(database_models.transactions).filter(database_models.transactions.id == transaction_id).first()
     if db_transactions:
-        return db_transactions
+        return serialize_transaction(db_transactions, db)
     return {"message": "Transaction not found!"}
 
 @app.post("/transactions/")
 def create_transactions(amount: float, products_services_fk: int, transaction_date: str, userid_fk: int, note: str = None, db: Session = Depends(get_db)):
+    products_services_fk = resolve_products_services_fk(products_services_fk, db)
+    transaction_date = resolve_transaction_date(transaction_date)
+    if not db.query(database_models.User).filter(database_models.User.id == userid_fk).first():
+        raise HTTPException(status_code=400, detail="userid_fk does not reference an existing user")
     db_transactions = database_models.transactions(amount=amount, products_services_fk=products_services_fk, transaction_date=transaction_date, userid_fk=userid_fk, note=note)
     db.add(db_transactions)
     db.commit()
     db.refresh(db_transactions)
-    return db_transactions
+    return serialize_transaction(db_transactions, db)
+
+@app.put("/transactions/{transaction_id}")
+def update_transaction(transaction_id: int, amount: float = None, products_services_fk: int = None, transaction_date: str = None, userid_fk: int = None, note: str = None, db: Session = Depends(get_db)):
+    db_transactions = db.query(database_models.transactions).filter(database_models.transactions.id == transaction_id).first()
+    if not db_transactions:
+        return {"message": "Transaction not found!"}
+    if amount is not None:
+        db_transactions.amount = amount
+    if products_services_fk is not None:
+        db_transactions.products_services_fk = resolve_products_services_fk(products_services_fk, db)
+    if transaction_date is not None:
+        db_transactions.transaction_date = resolve_transaction_date(transaction_date)
+    if userid_fk is not None:
+        if not db.query(database_models.User).filter(database_models.User.id == userid_fk).first():
+            raise HTTPException(status_code=400, detail="userid_fk does not reference an existing user")
+        db_transactions.userid_fk = userid_fk
+    if note is not None:
+        db_transactions.note = note
+    db.commit()
+    db.refresh(db_transactions)
+    return serialize_transaction(db_transactions, db)
+
+@app.delete("/transactions/{transaction_id}")
+def delete_transaction(transaction_id: int, db: Session = Depends(get_db)):
+    db_transactions = db.query(database_models.transactions).filter(database_models.transactions.id == transaction_id).first()
+    if not db_transactions:
+        return {"message": "Transaction not found!"}
+    db.delete(db_transactions)
+    db.commit()
+    return {"message": "Transaction deleted"}
 
 @app.post("/login")
 def login(username: str, password: str, db: Session = Depends(get_db)):

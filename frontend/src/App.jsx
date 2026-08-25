@@ -28,7 +28,10 @@ import ProductsAndServicesList from "./pages/ProductsAndServicesList";
 import ProductsAndServicesCreate from "./pages/ProductsAndServicesCreate";
 import ProductsAndServicesView from "./pages/ProductsAndServicesView";
 import ProductsAndServicesEdit from "./pages/ProductsAndServicesEdit";
-import Transaction from "./pages/Transaction";
+import Transactions from "./pages/Transactions";
+import TransactionCreate from "./pages/TransactionCreate";
+import TransactionView from "./pages/TransactionView";
+import TransactionEdit from "./pages/TransactionEdit";
 import Reports from "./pages/Reports";
 
 function AppIndex() {
@@ -101,7 +104,10 @@ export default function App() {
           </Route>
 
           <Route element={<RequireCapability capability="get_transactions" />}>
-            <Route path="transaction" element={<Transaction />} />
+            <Route path="transaction" element={<Transactions />} />
+            <Route path="transaction/new" element={<TransactionCreate />} />
+            <Route path="transaction/:transactionId" element={<TransactionView />} />
+            <Route path="transaction/:transactionId/edit" element={<TransactionEdit />} />
           </Route>
 
           <Route element={<RequireCapability capability="get_reports" />}>
