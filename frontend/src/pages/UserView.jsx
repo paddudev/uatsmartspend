@@ -43,8 +43,14 @@ export default function UserView() {
       {error && <Alert severity="error">{error}</Alert>}
 
       {user && (
-        <Paper sx={{ p: 3, maxWidth: 480 }}>
-          <Stack spacing={2}>
+        <Paper sx={{ p: 3, width: "100%" }}>
+          <Box
+            sx={{
+              display: "grid",
+              gridTemplateColumns: { xs: "1fr", sm: "repeat(2, 1fr)", md: "repeat(3, 1fr)" },
+              gap: 2,
+            }}
+          >
             <Field label="Username" value={user.username} />
             <Field label="Full name" value={user.full_name} />
             <Field label="Email" value={user.email} />
@@ -70,7 +76,7 @@ export default function UserView() {
               />
             </Box>
             {user.network_access === "limited" && (
-              <Box>
+              <Box sx={{ gridColumn: "1 / -1" }}>
                 <Typography variant="caption" color="text.secondary" display="block" gutterBottom>
                   Allowed IP addresses
                 </Typography>
@@ -87,13 +93,13 @@ export default function UserView() {
                 )}
               </Box>
             )}
-            <Stack direction="row" spacing={2} sx={{ pt: 1 }}>
+            <Stack direction="row" spacing={2} sx={{ gridColumn: "1 / -1", pt: 1 }}>
               <Button variant="contained" onClick={() => navigate(`/app/account/${userId}/edit`)}>
                 Edit
               </Button>
               <Button onClick={() => navigate("/app/account")}>Back to list</Button>
             </Stack>
-          </Stack>
+          </Box>
         </Paper>
       )}
     </>

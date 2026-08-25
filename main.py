@@ -49,9 +49,15 @@ def resolve_network_access(network_access: str, ip_addresses: list[str] | None):
 
 def serialize_user(db_user: database_models.User, db: Session):
     usergroup_description = None
+    capabilities = []
     if db_user.usergroup_fk:
         db_usergroup = db.query(database_models.usergroup).filter(database_models.usergroup.id == db_user.usergroup_fk).first()
-        usergroup_description = db_usergroup.description if db_usergroup else None
+        if db_usergroup:
+            usergroup_description = db_usergroup.description
+            capability_ids = (db_usergroup.capabilitymaster_fk or {}).get("capability_ids", [])
+            if capability_ids:
+                rows = db.query(database_models.capabilitymaster).filter(database_models.capabilitymaster.id.in_(capability_ids)).all()
+                capabilities = [row.name for row in rows]
 
     return {
         "id": db_user.id,
@@ -63,6 +69,7 @@ def serialize_user(db_user: database_models.User, db: Session):
         "ip_addresses": db_user.ip_addresses or [],
         "usergroup_fk": db_user.usergroup_fk,
         "usergroup_description": usergroup_description,
+        "capabilities": capabilities,
     }
 
 @app.get("/")

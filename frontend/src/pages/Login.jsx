@@ -26,7 +26,7 @@ export default function Login() {
     setSubmitting(true);
     try {
       await login(username, password);
-      navigate("/app/dashboard", { replace: true });
+      navigate("/app", { replace: true });
     } catch (err) {
       const detail = err?.response?.data?.detail;
       setError(detail || "Unable to log in. Please try again.");

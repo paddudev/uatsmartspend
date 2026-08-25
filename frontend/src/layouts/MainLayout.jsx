@@ -19,16 +19,6 @@ import {
   Tooltip,
   Typography,
 } from "@mui/material";
-import DashboardIcon from "@mui/icons-material/Dashboard";
-import PeopleIcon from "@mui/icons-material/People";
-import PersonIcon from "@mui/icons-material/Person";
-import GroupsIcon from "@mui/icons-material/Groups";
-import TuneIcon from "@mui/icons-material/Tune";
-import LayersIcon from "@mui/icons-material/Layers";
-import CategoryIcon from "@mui/icons-material/Category";
-import Inventory2Icon from "@mui/icons-material/Inventory2";
-import ReceiptLongIcon from "@mui/icons-material/ReceiptLong";
-import AssessmentIcon from "@mui/icons-material/Assessment";
 import AccountCircle from "@mui/icons-material/AccountCircle";
 import LightModeIcon from "@mui/icons-material/LightMode";
 import DarkModeIcon from "@mui/icons-material/DarkMode";
@@ -38,33 +28,11 @@ import ExpandLessIcon from "@mui/icons-material/ExpandLess";
 import ExpandMoreIcon from "@mui/icons-material/ExpandMore";
 import { useAuth } from "../auth/AuthContext";
 import { useColorMode } from "../theme/ColorModeContext";
+import { getVisibleNavItems } from "../navConfig";
 
 const drawerWidth = 240;
 const collapsedWidth = 72;
 const COLLAPSE_STORAGE_KEY = "smartspend_drawer_collapsed";
-
-const navItems = [
-  { label: "Dashboard", to: "/app/dashboard", icon: <DashboardIcon /> },
-  {
-    label: "Account",
-    icon: <PeopleIcon />,
-    children: [
-      { label: "Users", to: "/app/account", icon: <PersonIcon /> },
-      { label: "User Groups", to: "/app/account/groups", icon: <GroupsIcon /> },
-    ],
-  },
-  {
-    label: "Master",
-    icon: <TuneIcon />,
-    children: [
-      { label: "Common Master", to: "/app/master/common", icon: <LayersIcon /> },
-      { label: "Category Master", to: "/app/master/category", icon: <CategoryIcon /> },
-      { label: "Products & Services", to: "/app/master/products", icon: <Inventory2Icon /> },
-    ],
-  },
-  { label: "Transaction", to: "/app/transaction", icon: <ReceiptLongIcon /> },
-  { label: "Reports", to: "/app/reports", icon: <AssessmentIcon /> },
-];
 
 // Among a group's children, the active one is whichever `to` is the longest
 // matching prefix of the current path — so "/app/account/groups/5" resolves
@@ -86,6 +54,7 @@ export default function MainLayout() {
   const [collapsed, setCollapsed] = useState(
     () => localStorage.getItem(COLLAPSE_STORAGE_KEY) === "1"
   );
+  const navItems = getVisibleNavItems(user);
   const [openGroups, setOpenGroups] = useState(() => {
     const initial = {};
     navItems.forEach((item) => {

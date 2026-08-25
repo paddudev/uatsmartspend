@@ -41,13 +41,19 @@ export default function UserGroupView() {
       {error && <Alert severity="error">{error}</Alert>}
 
       {group && (
-        <Paper sx={{ p: 3, maxWidth: 480 }}>
-          <Stack spacing={2}>
+        <Paper sx={{ p: 3, width: "100%" }}>
+          <Box
+            sx={{
+              display: "grid",
+              gridTemplateColumns: { xs: "1fr", sm: "repeat(2, 1fr)", md: "repeat(3, 1fr)" },
+              gap: 2,
+            }}
+          >
             <Field label="Name" value={group.name} />
             <Field label="Description" value={group.description || "—"} />
             <Field label="Tag" value={group.tag || "—"} />
             <Field label="Owner" value={group.owner_username || "—"} />
-            <Box>
+            <Box sx={{ gridColumn: "1 / -1" }}>
               <Typography variant="caption" color="text.secondary" display="block" gutterBottom>
                 Capabilities
               </Typography>
@@ -63,13 +69,13 @@ export default function UserGroupView() {
                 </Typography>
               )}
             </Box>
-            <Stack direction="row" spacing={2} sx={{ pt: 1 }}>
+            <Stack direction="row" spacing={2} sx={{ gridColumn: "1 / -1", pt: 1 }}>
               <Button variant="contained" onClick={() => navigate(`/app/account/groups/${groupId}/edit`)}>
                 Edit
               </Button>
               <Button onClick={() => navigate("/app/account/groups")}>Back to list</Button>
             </Stack>
-          </Stack>
+          </Box>
         </Paper>
       )}
     </>

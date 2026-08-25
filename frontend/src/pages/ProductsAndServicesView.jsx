@@ -35,19 +35,25 @@ export default function ProductsAndServicesView() {
       {error && <Alert severity="error">{error}</Alert>}
 
       {item && (
-        <Paper sx={{ p: 3, maxWidth: 480 }}>
-          <Stack spacing={2}>
+        <Paper sx={{ p: 3, width: "100%" }}>
+          <Box
+            sx={{
+              display: "grid",
+              gridTemplateColumns: { xs: "1fr", sm: "repeat(2, 1fr)", md: "repeat(3, 1fr)" },
+              gap: 2,
+            }}
+          >
             <Field label="Name" value={item.name} />
             <Field label="Description" value={item.description || "—"} />
             <Field label="Category" value={item.category_name || "—"} />
             <Field label="Owner" value={item.owner_username || "—"} />
-            <Stack direction="row" spacing={2} sx={{ pt: 1 }}>
+            <Stack direction="row" spacing={2} sx={{ gridColumn: "1 / -1", pt: 1 }}>
               <Button variant="contained" onClick={() => navigate(`/app/master/products/${productId}/edit`)}>
                 Edit
               </Button>
               <Button onClick={() => navigate("/app/master/products")}>Back to list</Button>
             </Stack>
-          </Stack>
+          </Box>
         </Paper>
       )}
     </>
