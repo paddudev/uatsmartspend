@@ -13,6 +13,7 @@ import { getTransaction, updateTransaction } from "../api/transactions";
 import { useAuth } from "../auth/AuthContext";
 import TransactionCategoryFields from "../components/TransactionCategoryFields";
 import { getTransactionDateRange } from "../utils/transactionDateRange";
+import { useNotification } from "../notifications/NotificationContext";
 
 const dateRange = getTransactionDateRange();
 
@@ -20,6 +21,7 @@ export default function TransactionEdit() {
   const { transactionId } = useParams();
   const navigate = useNavigate();
   const { user } = useAuth();
+  const { notifySuccess } = useNotification();
   const [form, setForm] = useState(null);
   const [error, setError] = useState("");
   const [submitting, setSubmitting] = useState(false);
@@ -63,6 +65,7 @@ export default function TransactionEdit() {
         products_services_fk: form.products_services_fk,
         note: form.note,
       });
+      notifySuccess("Transaction updated successfully.");
       navigate(`/app/transaction/${transactionId}`);
     } catch (err) {
       setError(err?.response?.data?.detail || "Unable to save changes.");

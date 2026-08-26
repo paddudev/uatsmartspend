@@ -49,7 +49,7 @@ export default function TransactionCategoryFields({
   return (
     <>
       <FormControl required>
-        <FormLabel id="common-master-label">Common master</FormLabel>
+        <FormLabel id="common-master-label">Transaction Type</FormLabel>
         <RadioGroup
           aria-labelledby="common-master-label"
           row
@@ -70,7 +70,7 @@ export default function TransactionCategoryFields({
         required
         fullWidth
         disabled={!commonMasterId}
-        helperText={!commonMasterId ? "Select a common master first" : ""}
+        helperText={!commonMasterId ? "Select a transaction type first" : ""}
       >
         {visibleCategories.map((c) => (
           <MenuItem key={c.id} value={c.id}>

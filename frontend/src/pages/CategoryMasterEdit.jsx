@@ -12,10 +12,12 @@ import {
 } from "@mui/material";
 import { getCategoryMaster, listCommonMasters, updateCategoryMaster } from "../api/masters";
 import { listUsers } from "../api/users";
+import { useNotification } from "../notifications/NotificationContext";
 
 export default function CategoryMasterEdit() {
   const { categoryMasterId } = useParams();
   const navigate = useNavigate();
+  const { notifySuccess } = useNotification();
   const [form, setForm] = useState(null);
   const [users, setUsers] = useState([]);
   const [commonMasters, setCommonMasters] = useState([]);
@@ -52,6 +54,7 @@ export default function CategoryMasterEdit() {
         tag: form.tag,
         userid_fk: form.userid_fk,
       });
+      notifySuccess("Category master updated successfully.");
       navigate(`/app/master/category/${categoryMasterId}`);
     } catch (err) {
       setError(err?.response?.data?.detail || "Unable to save changes.");

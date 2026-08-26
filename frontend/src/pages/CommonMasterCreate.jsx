@@ -12,11 +12,13 @@ import {
 } from "@mui/material";
 import { createCommonMaster } from "../api/masters";
 import { listUsers } from "../api/users";
+import { useNotification } from "../notifications/NotificationContext";
 
 const emptyForm = { name: "", description: "", tag: "", userid_fk: "" };
 
 export default function CommonMasterCreate() {
   const navigate = useNavigate();
+  const { notifySuccess } = useNotification();
   const [form, setForm] = useState(emptyForm);
   const [users, setUsers] = useState([]);
   const [error, setError] = useState("");
@@ -43,6 +45,7 @@ export default function CommonMasterCreate() {
         tag: form.tag,
         userid_fk: form.userid_fk,
       });
+      notifySuccess("Common master created successfully.");
       navigate("/app/master/common");
     } catch (err) {
       setError(err?.response?.data?.detail || "Unable to create common master.");

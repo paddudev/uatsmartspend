@@ -12,11 +12,13 @@ import {
 } from "@mui/material";
 import { createProductsAndServices, listCategoryMasters } from "../api/masters";
 import { listUsers } from "../api/users";
+import { useNotification } from "../notifications/NotificationContext";
 
 const emptyForm = { name: "", description: "", categorymaster_fk: "", userid_fk: "" };
 
 export default function ProductsAndServicesCreate() {
   const navigate = useNavigate();
+  const { notifySuccess } = useNotification();
   const [form, setForm] = useState(emptyForm);
   const [users, setUsers] = useState([]);
   const [categories, setCategories] = useState([]);
@@ -47,6 +49,7 @@ export default function ProductsAndServicesCreate() {
         categorymaster_fk: form.categorymaster_fk,
         userid_fk: form.userid_fk,
       });
+      notifySuccess("Product/service created successfully.");
       navigate("/app/master/products");
     } catch (err) {
       setError(err?.response?.data?.detail || "Unable to create product/service.");

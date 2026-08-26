@@ -13,6 +13,7 @@ import {
 import { createUsergroup } from "../api/usergroups";
 import { listUsers } from "../api/users";
 import CapabilitySelect from "../components/CapabilitySelect";
+import { useNotification } from "../notifications/NotificationContext";
 
 const emptyForm = {
   name: "",
@@ -24,6 +25,7 @@ const emptyForm = {
 
 export default function UserGroupCreate() {
   const navigate = useNavigate();
+  const { notifySuccess } = useNotification();
   const [form, setForm] = useState(emptyForm);
   const [users, setUsers] = useState([]);
   const [error, setError] = useState("");
@@ -51,6 +53,7 @@ export default function UserGroupCreate() {
         userid_fk: form.userid_fk,
         capability_ids: form.capability_ids,
       });
+      notifySuccess("User group created successfully.");
       navigate("/app/account/groups");
     } catch (err) {
       setError(err?.response?.data?.detail || "Unable to create user group.");

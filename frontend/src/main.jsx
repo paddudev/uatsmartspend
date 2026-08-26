@@ -5,13 +5,16 @@ import "./index.css";
 import App from "./App.jsx";
 import { AuthProvider } from "./auth/AuthContext";
 import { ColorModeProvider } from "./theme/ColorModeContext";
+import { NotificationProvider } from "./notifications/NotificationContext";
 
 createRoot(document.getElementById("root")).render(
   <StrictMode>
     <ColorModeProvider>
       <BrowserRouter>
         <AuthProvider>
-          <App />
+          <NotificationProvider>
+            <App />
+          </NotificationProvider>
         </AuthProvider>
       </BrowserRouter>
     </ColorModeProvider>

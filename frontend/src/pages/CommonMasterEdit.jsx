@@ -12,10 +12,12 @@ import {
 } from "@mui/material";
 import { getCommonMaster, updateCommonMaster } from "../api/masters";
 import { listUsers } from "../api/users";
+import { useNotification } from "../notifications/NotificationContext";
 
 export default function CommonMasterEdit() {
   const { commonMasterId } = useParams();
   const navigate = useNavigate();
+  const { notifySuccess } = useNotification();
   const [form, setForm] = useState(null);
   const [users, setUsers] = useState([]);
   const [error, setError] = useState("");
@@ -50,6 +52,7 @@ export default function CommonMasterEdit() {
         tag: form.tag,
         userid_fk: form.userid_fk,
       });
+      notifySuccess("Common master updated successfully.");
       navigate(`/app/master/common/${commonMasterId}`);
     } catch (err) {
       setError(err?.response?.data?.detail || "Unable to save changes.");

@@ -13,10 +13,12 @@ import {
 import { getUsergroup, updateUsergroup } from "../api/usergroups";
 import { listUsers } from "../api/users";
 import CapabilitySelect from "../components/CapabilitySelect";
+import { useNotification } from "../notifications/NotificationContext";
 
 export default function UserGroupEdit() {
   const { groupId } = useParams();
   const navigate = useNavigate();
+  const { notifySuccess } = useNotification();
   const [form, setForm] = useState(null);
   const [users, setUsers] = useState([]);
   const [error, setError] = useState("");
@@ -53,6 +55,7 @@ export default function UserGroupEdit() {
         userid_fk: form.userid_fk,
         capability_ids: form.capability_ids,
       });
+      notifySuccess("User group updated successfully.");
       navigate(`/app/account/groups/${groupId}`);
     } catch (err) {
       setError(err?.response?.data?.detail || "Unable to save changes.");

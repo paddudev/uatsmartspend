@@ -12,11 +12,13 @@ import {
 } from "@mui/material";
 import { createCategoryMaster, listCommonMasters } from "../api/masters";
 import { listUsers } from "../api/users";
+import { useNotification } from "../notifications/NotificationContext";
 
 const emptyForm = { name: "", commonmaster_fk: "", tag: "", userid_fk: "" };
 
 export default function CategoryMasterCreate() {
   const navigate = useNavigate();
+  const { notifySuccess } = useNotification();
   const [form, setForm] = useState(emptyForm);
   const [users, setUsers] = useState([]);
   const [commonMasters, setCommonMasters] = useState([]);
@@ -47,6 +49,7 @@ export default function CategoryMasterCreate() {
         tag: form.tag,
         userid_fk: form.userid_fk,
       });
+      notifySuccess("Category master created successfully.");
       navigate("/app/master/category");
     } catch (err) {
       setError(err?.response?.data?.detail || "Unable to create category master.");

@@ -13,25 +13,37 @@ function getInitialMode() {
   return window.matchMedia?.("(prefers-color-scheme: dark)").matches ? "dark" : "light";
 }
 
-// Same primary blue used throughout the app (MUI's default #1976d2, ~4.6:1
-// contrast with white — meets WCAG AA). In dark mode the header instead uses
-// grey.900 (~16:1 contrast with white) since a light-mode-bright blue bar
-// reads poorly against a dark app body; primary blue stays reserved for
-// buttons/links/active nav, where MUI auto-picks a lighter shade with a
-// readable contrastText for the dark palette.
+const LIGHT_CHROME_BG = "#F3F5F9";
+
+// Same primary blue used throughout the app (MUI's default #1976d2). The app
+// chrome (AppBar, Drawer, page background) uses a soft light blue-grey in
+// light mode, with near-black text (theme.palette.text.primary, >15:1
+// contrast against #F3F5F9) — while content surfaces (Paper/Card/Table)
+// keep the default white so they read as elevated cards against the chrome.
+// In dark mode the header uses grey.900 (~16:1 contrast with white) since a
+// light-mode-bright blue bar reads poorly against a dark app body; primary
+// blue stays reserved for buttons/links/active nav, where MUI auto-picks a
+// lighter shade with a readable contrastText for the dark palette.
 function buildTheme(mode) {
   return createTheme({
     palette: {
       mode,
       primary: { main: "#1976d2" },
+      ...(mode === "light" && { background: { default: LIGHT_CHROME_BG } }),
     },
     components: {
       MuiAppBar: {
         styleOverrides: {
           root: ({ theme }) => ({
-            backgroundColor:
-              theme.palette.mode === "dark" ? theme.palette.grey[900] : theme.palette.primary.main,
-            color: theme.palette.mode === "dark" ? theme.palette.common.white : theme.palette.primary.contrastText,
+            backgroundColor: theme.palette.mode === "dark" ? theme.palette.grey[900] : LIGHT_CHROME_BG,
+            color: theme.palette.mode === "dark" ? theme.palette.common.white : theme.palette.text.primary,
+          }),
+        },
+      },
+      MuiDrawer: {
+        styleOverrides: {
+          paper: ({ theme }) => ({
+            backgroundColor: theme.palette.mode === "light" ? LIGHT_CHROME_BG : undefined,
           }),
         },
       },

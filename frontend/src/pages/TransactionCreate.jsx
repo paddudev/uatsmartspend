@@ -13,6 +13,7 @@ import { createTransaction } from "../api/transactions";
 import { useAuth } from "../auth/AuthContext";
 import TransactionCategoryFields from "../components/TransactionCategoryFields";
 import { getTransactionDateRange } from "../utils/transactionDateRange";
+import { useNotification } from "../notifications/NotificationContext";
 
 const emptyForm = {
   amount: "",
@@ -28,6 +29,7 @@ const dateRange = getTransactionDateRange();
 export default function TransactionCreate() {
   const navigate = useNavigate();
   const { user } = useAuth();
+  const { notifySuccess } = useNotification();
   const [form, setForm] = useState(emptyForm);
   const [error, setError] = useState("");
   const [submitting, setSubmitting] = useState(false);
@@ -56,6 +58,7 @@ export default function TransactionCreate() {
         products_services_fk: form.products_services_fk,
         note: form.note,
       });
+      notifySuccess("Transaction created successfully.");
       navigate("/app/transaction");
     } catch (err) {
       setError(err?.response?.data?.detail || "Unable to create transaction.");

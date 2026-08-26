@@ -15,10 +15,12 @@ import {
 import { getUser, updateUser } from "../api/users";
 import { listUsergroups } from "../api/usergroups";
 import NetworkAccessFields from "../components/NetworkAccessFields";
+import { useNotification } from "../notifications/NotificationContext";
 
 export default function UserEdit() {
   const { userId } = useParams();
   const navigate = useNavigate();
+  const { notifySuccess } = useNotification();
   const [form, setForm] = useState(null);
   const [usergroups, setUsergroups] = useState([]);
   const [error, setError] = useState("");
@@ -67,6 +69,7 @@ export default function UserEdit() {
         network_access: form.network_access,
         ip_addresses: form.network_access === "limited" ? form.ip_addresses : [],
       });
+      notifySuccess("User updated successfully.");
       navigate(`/app/account/${userId}`);
     } catch (err) {
       setError(err?.response?.data?.detail || "Unable to save changes.");

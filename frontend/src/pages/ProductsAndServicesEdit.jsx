@@ -12,10 +12,12 @@ import {
 } from "@mui/material";
 import { getProductsAndServices, listCategoryMasters, updateProductsAndServices } from "../api/masters";
 import { listUsers } from "../api/users";
+import { useNotification } from "../notifications/NotificationContext";
 
 export default function ProductsAndServicesEdit() {
   const { productId } = useParams();
   const navigate = useNavigate();
+  const { notifySuccess } = useNotification();
   const [form, setForm] = useState(null);
   const [users, setUsers] = useState([]);
   const [categories, setCategories] = useState([]);
@@ -52,6 +54,7 @@ export default function ProductsAndServicesEdit() {
         categorymaster_fk: form.categorymaster_fk,
         userid_fk: form.userid_fk,
       });
+      notifySuccess("Product/service updated successfully.");
       navigate(`/app/master/products/${productId}`);
     } catch (err) {
       setError(err?.response?.data?.detail || "Unable to save changes.");

@@ -13,6 +13,7 @@ import {
 import { createUser } from "../api/users";
 import { listUsergroups } from "../api/usergroups";
 import NetworkAccessFields from "../components/NetworkAccessFields";
+import { useNotification } from "../notifications/NotificationContext";
 
 const emptyForm = {
   username: "",
@@ -26,6 +27,7 @@ const emptyForm = {
 
 export default function UserCreate() {
   const navigate = useNavigate();
+  const { notifySuccess } = useNotification();
   const [form, setForm] = useState(emptyForm);
   const [usergroups, setUsergroups] = useState([]);
   const [error, setError] = useState("");
@@ -64,6 +66,7 @@ export default function UserCreate() {
         usergroup_fk: form.usergroup_fk,
         is_active: 1,
       });
+      notifySuccess("User created successfully.");
       navigate("/app/account");
     } catch (err) {
       setError(err?.response?.data?.detail || "Unable to create user.");

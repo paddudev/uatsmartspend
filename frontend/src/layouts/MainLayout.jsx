@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { NavLink, Outlet, useLocation, useNavigate } from "react-router-dom";
+import { Link as RouterLink, NavLink, Outlet, useLocation, useNavigate } from "react-router-dom";
 import {
   AppBar,
   Box,
@@ -17,7 +17,6 @@ import {
   Switch,
   Toolbar,
   Tooltip,
-  Typography,
 } from "@mui/material";
 import AccountCircle from "@mui/icons-material/AccountCircle";
 import LightModeIcon from "@mui/icons-material/LightMode";
@@ -29,6 +28,8 @@ import ExpandMoreIcon from "@mui/icons-material/ExpandMore";
 import { useAuth } from "../auth/AuthContext";
 import { useColorMode } from "../theme/ColorModeContext";
 import { getVisibleNavItems } from "../navConfig";
+import logoLight from "../assets/smartspend-logo-light.png";
+import logoDark from "../assets/smartspend-logo-dark.png";
 
 const drawerWidth = 240;
 const collapsedWidth = 72;
@@ -105,9 +106,18 @@ export default function MainLayout() {
     <Box sx={{ display: "flex" }}>
       <AppBar position="fixed" sx={{ zIndex: (theme) => theme.zIndex.drawer + 1 }}>
         <Toolbar sx={{ display: "flex", justifyContent: "space-between" }}>
-          <Typography variant="h6" noWrap component="div">
-            SmartSpend
-          </Typography>
+          <Box
+            component={RouterLink}
+            to="/app"
+            sx={{ display: "flex", alignItems: "center", lineHeight: 0 }}
+          >
+            <Box
+              component="img"
+              src={mode === "dark" ? logoDark : logoLight}
+              alt="SmartSpend"
+              sx={{ height: 36, width: "auto" }}
+            />
+          </Box>
           <Stack direction="row" spacing={2} sx={{ alignItems: "center" }}>
             <Stack direction="row" spacing={0.5} sx={{ alignItems: "center" }}>
               <LightModeIcon fontSize="small" />
