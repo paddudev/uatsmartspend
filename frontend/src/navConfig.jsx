@@ -34,7 +34,18 @@ export const navItems = [
     ],
   },
   { label: "Transaction", to: "/app/transaction", icon: <ReceiptLongIcon />, capability: "get_transactions" },
-  { label: "Reports", to: "/app/reports", icon: <AssessmentIcon />, capability: "get_reports" },
+  {
+    label: "Reports",
+    icon: <AssessmentIcon />,
+    children: [
+      {
+        label: "Category Wise Transactions",
+        to: "/app/reports/category-wise-transactions",
+        icon: <AssessmentIcon />,
+        capability: "get_reports",
+      },
+    ],
+  },
 ];
 
 export function hasCapability(user, capability) {

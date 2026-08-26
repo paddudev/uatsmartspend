@@ -32,7 +32,7 @@ import Transactions from "./pages/Transactions";
 import TransactionCreate from "./pages/TransactionCreate";
 import TransactionView from "./pages/TransactionView";
 import TransactionEdit from "./pages/TransactionEdit";
-import Reports from "./pages/Reports";
+import CategoryWiseTransactionsReport from "./pages/CategoryWiseTransactionsReport";
 
 function AppIndex() {
   const { user } = useAuth();
@@ -111,7 +111,7 @@ export default function App() {
           </Route>
 
           <Route element={<RequireCapability capability="get_reports" />}>
-            <Route path="reports" element={<Reports />} />
+            <Route path="reports/category-wise-transactions" element={<CategoryWiseTransactionsReport />} />
           </Route>
         </Route>
       </Route>
