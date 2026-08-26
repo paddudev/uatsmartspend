@@ -11,9 +11,13 @@ import {
   Typography,
 } from "@mui/material";
 import { useAuth } from "../auth/AuthContext";
+import { useColorMode } from "../theme/ColorModeContext";
+import logoLight from "../assets/smartspend-logo-light.png";
+import logoDark from "../assets/smartspend-logo-dark.png";
 
 export default function Login() {
   const { login } = useAuth();
+  const { mode } = useColorMode();
   const navigate = useNavigate();
   const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
@@ -40,47 +44,57 @@ export default function Login() {
       sx={{
         minHeight: "100vh",
         display: "flex",
-        alignItems: "center",
-        justifyContent: "center",
+        flexDirection: "column",
         bgcolor: "background.default",
       }}
     >
-      <Paper elevation={3} sx={{ p: 4, width: 360 }}>
-        <Typography variant="h5" component="h1" gutterBottom>
-          SmartSpend
-        </Typography>
-        <Typography variant="body2" color="text.secondary" gutterBottom>
-          Sign in to continue
-        </Typography>
+      <Box sx={{ flexGrow: 1, display: "flex", alignItems: "center", justifyContent: "center" }}>
+        <Paper elevation={3} sx={{ p: 4, width: 360 }}>
+          <Box
+            component="img"
+            src={mode === "dark" ? logoDark : logoLight}
+            alt="SmartSpend"
+            sx={{ display: "block", height: 40, mx: "auto", mb: 2 }}
+          />
+          <Typography variant="body2" color="text.secondary" gutterBottom sx={{ textAlign: "center" }}>
+            Sign in to continue
+          </Typography>
 
-        <Box component="form" onSubmit={handleSubmit} noValidate sx={{ mt: 2 }}>
-          <Stack spacing={2}>
-            {error && <Alert severity="error">{error}</Alert>}
-            <TextField
-              label="Username"
-              value={username}
-              onChange={(e) => setUsername(e.target.value)}
-              required
-              autoFocus
-              fullWidth
-            />
-            <TextField
-              label="Password"
-              type="password"
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-              required
-              fullWidth
-            />
-            <Button type="submit" variant="contained" disabled={submitting} fullWidth>
-              {submitting ? "Signing in..." : "Login"}
-            </Button>
-            <Link component={RouterLink} to="/forgot-password" variant="body2" sx={{ alignSelf: "center" }}>
-              Forgot password?
-            </Link>
-          </Stack>
-        </Box>
-      </Paper>
+          <Box component="form" onSubmit={handleSubmit} noValidate sx={{ mt: 2 }}>
+            <Stack spacing={2}>
+              {error && <Alert severity="error">{error}</Alert>}
+              <TextField
+                label="Username"
+                value={username}
+                onChange={(e) => setUsername(e.target.value)}
+                required
+                autoFocus
+                fullWidth
+              />
+              <TextField
+                label="Password"
+                type="password"
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                required
+                fullWidth
+              />
+              <Button type="submit" variant="contained" disabled={submitting} fullWidth>
+                {submitting ? "Signing in..." : "Login"}
+              </Button>
+              <Link component={RouterLink} to="/forgot-password" variant="body2" sx={{ alignSelf: "center" }}>
+                Forgot password?
+              </Link>
+            </Stack>
+          </Box>
+        </Paper>
+      </Box>
+
+      <Box component="footer" sx={{ py: 2, textAlign: "center" }}>
+        <Typography variant="body2" color="text.secondary">
+          © {new Date().getFullYear()} SmartSpend. All rights reserved.
+        </Typography>
+      </Box>
     </Box>
   );
 }
