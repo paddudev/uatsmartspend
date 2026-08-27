@@ -316,8 +316,33 @@ def serialize_transaction(db_t: database_models.transactions, db: Session):
     }
 
 @app.get("/transactions/")
-def read_transactions(db: Session = Depends(get_db)):
-    return [serialize_transaction(t, db) for t in db.query(database_models.transactions).all()]
+def read_transactions(
+    userid_fk: int | None = None,
+    from_date: str | None = None,
+    to_date: str | None = None,
+    db: Session = Depends(get_db),
+):
+    if (from_date is None) != (to_date is None):
+        raise HTTPException(status_code=400, detail="from_date and to_date must be provided together")
+    if from_date is not None and to_date is not None:
+        try:
+            parsed_from = datetime.date.fromisoformat(from_date)
+            parsed_to = datetime.date.fromisoformat(to_date)
+        except ValueError:
+            raise HTTPException(status_code=400, detail="from_date and to_date must be in YYYY-MM-DD format")
+        if parsed_from > parsed_to:
+            raise HTTPException(status_code=400, detail="from_date must not be after to_date")
+        if parsed_to > months_ago(parsed_from, -6):
+            raise HTTPException(status_code=400, detail="Date range cannot exceed 6 months")
+
+    query = db.query(database_models.transactions)
+    if userid_fk is not None:
+        query = query.filter(database_models.transactions.userid_fk == userid_fk)
+    if from_date is not None:
+        query = query.filter(database_models.transactions.transaction_date >= from_date)
+    if to_date is not None:
+        query = query.filter(database_models.transactions.transaction_date <= to_date)
+    return [serialize_transaction(t, db) for t in query.all()]
 
 @app.get("/transactions/{transaction_id}")
 def read_transaction(transaction_id: int, db: Session = Depends(get_db)):

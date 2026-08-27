@@ -32,6 +32,7 @@ import {
   YAxis,
 } from "recharts";
 import { listTransactions } from "../api/transactions";
+import { useAuth } from "../auth/AuthContext";
 import { formatINR } from "../utils/currency";
 import {
   addMonths,
@@ -183,6 +184,7 @@ function StatCard({ label, value, sparklineData, sparklineKey, sparklineColor, c
 }
 
 export default function Dashboard() {
+  const { user } = useAuth();
   const outerTheme = useTheme();
   const dashboardTheme = useMemo(
     () =>
@@ -198,11 +200,11 @@ export default function Dashboard() {
   const [monthCursor, setMonthCursor] = useState(() => new Date());
 
   useEffect(() => {
-    listTransactions()
+    listTransactions({ userid_fk: user.id })
       .then(setTransactions)
       .catch(() => setError("Unable to load dashboard data."))
       .finally(() => setLoading(false));
-  }, []);
+  }, [user.id]);
 
   const prevMonthCursor = useMemo(() => addMonths(monthCursor, -1), [monthCursor]);
   const current = useMemo(() => summarizeMonth(transactions, monthCursor), [transactions, monthCursor]);

@@ -23,9 +23,11 @@ import EditIcon from "@mui/icons-material/Edit";
 import DeleteIcon from "@mui/icons-material/Delete";
 import { deleteTransaction, listTransactions } from "../api/transactions";
 import ConfirmDialog from "../components/ConfirmDialog";
+import { useAuth } from "../auth/AuthContext";
 
 export default function Transactions() {
   const navigate = useNavigate();
+  const { user } = useAuth();
   const [items, setItems] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
@@ -35,7 +37,7 @@ export default function Transactions() {
     setLoading(true);
     setError("");
     try {
-      const data = await listTransactions();
+      const data = await listTransactions({ userid_fk: user.id });
       setItems(data);
     } catch {
       setError("Unable to load transactions.");
@@ -46,7 +48,7 @@ export default function Transactions() {
 
   useEffect(() => {
     loadItems();
-  }, []);
+  }, [user.id]);
 
   async function handleDeleteConfirmed() {
     const id = pendingDelete.id;

@@ -9,8 +9,9 @@ function buildQuery(fields) {
   return params.toString();
 }
 
-export function listTransactions() {
-  return apiClient.get("/transactions/").then((res) => res.data);
+export function listTransactions(filters) {
+  const query = filters ? buildQuery(filters) : "";
+  return apiClient.get(`/transactions/${query ? `?${query}` : ""}`).then((res) => res.data);
 }
 export function getTransaction(id) {
   return apiClient.get(`/transactions/${id}`).then((res) => res.data);
