@@ -30,12 +30,17 @@ export function getUser(userId) {
   return apiClient.get(`/users/${userId}`).then((res) => res.data);
 }
 
-export function createUser(fields) {
-  return apiClient.post(`/users/?${buildQuery(fields)}`).then((res) => res.data);
+export function createUser({ profile_photo, ...fields }) {
+  return apiClient
+    .post(`/users/?${buildQuery(fields)}`, profile_photo ?? null)
+    .then((res) => res.data);
 }
 
-export function updateUser(userId, fields) {
-  return apiClient.put(`/users/${userId}?${buildQuery(fields)}`).then((res) => res.data);
+export function updateUser(userId, { profile_photo, ...fields }) {
+  const hasPhoto = profile_photo !== undefined;
+  return apiClient
+    .put(`/users/${userId}?${buildQuery(fields)}`, hasPhoto ? profile_photo : undefined)
+    .then((res) => res.data);
 }
 
 export function deactivateUser(userId) {

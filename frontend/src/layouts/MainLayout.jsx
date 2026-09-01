@@ -2,6 +2,7 @@ import { useState } from "react";
 import { Link as RouterLink, NavLink, Outlet, useLocation, useNavigate } from "react-router-dom";
 import {
   AppBar,
+  Avatar,
   Box,
   Collapse,
   Divider,
@@ -136,7 +137,11 @@ export default function MainLayout() {
               color="inherit"
               onClick={(e) => setAnchorEl(e.currentTarget)}
             >
-              <AccountCircle />
+              {user?.profile_photo ? (
+                <Avatar src={`data:image/png;base64,${user.profile_photo}`} sx={{ width: 32, height: 32 }} />
+              ) : (
+                <AccountCircle />
+              )}
             </IconButton>
             <Menu anchorEl={anchorEl} open={Boolean(anchorEl)} onClose={() => setAnchorEl(null)}>
               <MenuItem disabled>{user?.full_name || user?.username}</MenuItem>

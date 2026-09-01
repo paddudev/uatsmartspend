@@ -1,5 +1,6 @@
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import {
+  Box,
   Checkbox,
   FormControlLabel,
   FormGroup,
@@ -19,6 +20,16 @@ export default function CapabilitySelect({ selectedIds, onChange }) {
       .catch(() => setError("Unable to load capabilities."));
   }, []);
 
+  const groups = useMemo(() => {
+    const byTag = new Map();
+    capabilities.forEach((cap) => {
+      const key = cap.tag || "Other";
+      if (!byTag.has(key)) byTag.set(key, []);
+      byTag.get(key).push(cap);
+    });
+    return [...byTag.entries()].sort((a, b) => a[0].localeCompare(b[0]));
+  }, [capabilities]);
+
   function toggle(id) {
     if (selectedIds.includes(id)) {
       onChange(selectedIds.filter((existing) => existing !== id));
@@ -28,27 +39,35 @@ export default function CapabilitySelect({ selectedIds, onChange }) {
   }
 
   return (
-    <Stack spacing={1}>
+    <Stack spacing={1.5}>
       <FormLabel>Capabilities</FormLabel>
       {error && (
         <Typography variant="body2" color="error">
           {error}
         </Typography>
       )}
-      <FormGroup>
-        {capabilities.map((cap) => (
-          <FormControlLabel
-            key={cap.id}
-            control={
-              <Checkbox
-                checked={selectedIds.includes(cap.id)}
-                onChange={() => toggle(cap.id)}
+      {groups.map(([tag, caps]) => (
+        <Box key={tag}>
+          <Typography variant="subtitle2" color="text.secondary" sx={{ textTransform: "capitalize" }}>
+            {tag}
+          </Typography>
+          <FormGroup row>
+            {caps.map((cap) => (
+              <FormControlLabel
+                key={cap.id}
+                sx={{ width: { xs: "100%", sm: "50%", md: "33%" }, mr: 0 }}
+                control={
+                  <Checkbox
+                    checked={selectedIds.includes(cap.id)}
+                    onChange={() => toggle(cap.id)}
+                  />
+                }
+                label={cap.description || cap.name}
               />
-            }
-            label={cap.description || cap.name}
-          />
-        ))}
-      </FormGroup>
+            ))}
+          </FormGroup>
+        </Box>
+      ))}
       {capabilities.length === 0 && !error && (
         <Typography variant="body2" color="text.secondary">
           No capabilities defined yet.

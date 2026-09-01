@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import {
   Alert,
+  Avatar,
   Box,
   Button,
   Chip,
@@ -9,6 +10,7 @@ import {
   Stack,
   Typography,
 } from "@mui/material";
+import PersonIcon from "@mui/icons-material/Person";
 import { getUser } from "../api/users";
 
 function Field({ label, value }) {
@@ -51,10 +53,23 @@ export default function UserView() {
               gap: 2,
             }}
           >
+            <Box sx={{ gridColumn: "1 / -1" }}>
+              <Avatar
+                src={user.profile_photo ? `data:image/png;base64,${user.profile_photo}` : undefined}
+                sx={{ width: 64, height: 64 }}
+              >
+                <PersonIcon />
+              </Avatar>
+            </Box>
             <Field label="Username" value={user.username} />
             <Field label="Full name" value={user.full_name} />
             <Field label="Email" value={user.email} />
             <Field label="User group" value={user.usergroup_description || "—"} />
+            <Field label="Gender" value={user.gender_name || "—"} />
+            <Field label="Country" value={user.country_name || "—"} />
+            <Field label="Pincode" value={user.pincode_value || "—"} />
+            <Field label="City" value={user.city || "—"} />
+            <Field label="State" value={user.state_name || "—"} />
             <Box>
               <Typography variant="caption" color="text.secondary" display="block">
                 Status

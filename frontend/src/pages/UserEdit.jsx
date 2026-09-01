@@ -15,6 +15,7 @@ import {
 import { getUser, updateUser } from "../api/users";
 import { listUsergroups } from "../api/usergroups";
 import NetworkAccessFields from "../components/NetworkAccessFields";
+import UserProfileFields from "../components/UserProfileFields";
 import { useNotification } from "../notifications/NotificationContext";
 
 export default function UserEdit() {
@@ -37,6 +38,10 @@ export default function UserEdit() {
           usergroup_fk: u.usergroup_fk || "",
           network_access: u.network_access || "open",
           ip_addresses: u.ip_addresses || [],
+          profile_photo: u.profile_photo || "",
+          gender_fk: u.gender_fk || "",
+          country_fk: u.country_fk || "",
+          pincode_fk: u.pincode_fk || "",
         });
         setUsergroups(groups);
       })
@@ -68,6 +73,10 @@ export default function UserEdit() {
         usergroup_fk: form.usergroup_fk,
         network_access: form.network_access,
         ip_addresses: form.network_access === "limited" ? form.ip_addresses : [],
+        profile_photo: form.profile_photo || undefined,
+        gender_fk: form.gender_fk || undefined,
+        country_fk: form.country_fk || undefined,
+        pincode_fk: form.pincode_fk || undefined,
       });
       notifySuccess("User updated successfully.");
       navigate(`/app/account/${userId}`);
@@ -147,6 +156,17 @@ export default function UserEdit() {
                 onIpAddressesChange={(ips) => handleChange("ip_addresses", ips)}
               />
             </Box>
+
+            <UserProfileFields
+              profilePhoto={form.profile_photo}
+              onProfilePhotoChange={(value) => handleChange("profile_photo", value)}
+              genderId={form.gender_fk}
+              onGenderChange={(value) => handleChange("gender_fk", value)}
+              countryId={form.country_fk}
+              onCountryChange={(value) => handleChange("country_fk", value)}
+              pincodeId={form.pincode_fk}
+              onPincodeChange={(value) => handleChange("pincode_fk", value)}
+            />
 
             <FormControlLabel
               sx={{ gridColumn: "1 / -1" }}

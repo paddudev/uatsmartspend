@@ -8,6 +8,11 @@ import CategoryIcon from "@mui/icons-material/Category";
 import Inventory2Icon from "@mui/icons-material/Inventory2";
 import ReceiptLongIcon from "@mui/icons-material/ReceiptLong";
 import AssessmentIcon from "@mui/icons-material/Assessment";
+import PublicIcon from "@mui/icons-material/Public";
+import FlagIcon from "@mui/icons-material/Flag";
+import MapIcon from "@mui/icons-material/Map";
+import LocationCityIcon from "@mui/icons-material/LocationCity";
+import MarkunreadMailboxIcon from "@mui/icons-material/MarkunreadMailbox";
 
 // Each leaf's `capability` must match a capabilitymaster.name the user's
 // usergroup can be granted (e.g. "get_user"). A leaf with no `capability`
@@ -44,6 +49,16 @@ export const navItems = [
         icon: <AssessmentIcon />,
         capability: "get_reports",
       },
+    ],
+  },
+  {
+    label: "Geography",
+    icon: <PublicIcon />,
+    children: [
+      { label: "Pincode", to: "/app/geography/pincode", icon: <MarkunreadMailboxIcon />, capability: "get_pincode" },
+      { label: "District", to: "/app/geography/district", icon: <LocationCityIcon />, capability: "get_district" },
+      { label: "State/Province", to: "/app/geography/state", icon: <MapIcon />, capability: "get_state" },
+      { label: "Country", to: "/app/geography/country", icon: <FlagIcon />, capability: "get_country" },
     ],
   },
 ];

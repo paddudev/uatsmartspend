@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import {
   Alert,
+  Avatar,
   Box,
   Button,
   Chip,
@@ -20,6 +21,7 @@ import {
 import AddIcon from "@mui/icons-material/Add";
 import VisibilityIcon from "@mui/icons-material/Visibility";
 import EditIcon from "@mui/icons-material/Edit";
+import PersonIcon from "@mui/icons-material/Person";
 import PersonOffIcon from "@mui/icons-material/PersonOff";
 import { deactivateUser, listUsers } from "../api/users";
 import ConfirmDialog from "../components/ConfirmDialog";
@@ -78,6 +80,7 @@ export default function Account() {
         <Table>
           <TableHead>
             <TableRow>
+              <TableCell>Photo</TableCell>
               <TableCell>Username</TableCell>
               <TableCell>Full name</TableCell>
               <TableCell>Email</TableCell>
@@ -88,7 +91,7 @@ export default function Account() {
           <TableBody>
             {!loading && users.length === 0 && (
               <TableRow>
-                <TableCell colSpan={5} align="center">
+                <TableCell colSpan={6} align="center">
                   No users found.
                 </TableCell>
               </TableRow>
@@ -102,6 +105,14 @@ export default function Account() {
                   "&:hover .row-actions": { opacity: 1 },
                 }}
               >
+                <TableCell>
+                  <Avatar
+                    src={u.profile_photo ? `data:image/png;base64,${u.profile_photo}` : undefined}
+                    sx={{ width: 28, height: 28 }}
+                  >
+                    <PersonIcon fontSize="small" />
+                  </Avatar>
+                </TableCell>
                 <TableCell>{u.username}</TableCell>
                 <TableCell>{u.full_name}</TableCell>
                 <TableCell>{u.email}</TableCell>

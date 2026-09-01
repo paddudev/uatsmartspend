@@ -1,8 +1,10 @@
+import base64
 import calendar
 import datetime
 import ipaddress
+import re
 
-from fastapi import Depends, FastAPI, HTTPException, Query
+from fastapi import Body, Depends, FastAPI, HTTPException, Query
 from fastapi.middleware.cors import CORSMiddleware
 from passlib.context import CryptContext
 from database import session,engine
@@ -76,6 +78,21 @@ def resolve_usergroup_fk(usergroup_fk: int | None, db: Session):
         raise HTTPException(status_code=400, detail="usergroup_fk does not reference an existing user group")
     return usergroup_fk
 
+def resolve_optional_fk(value: int | None, model, field_name: str, db: Session):
+    if value is None:
+        return None
+    if not db.query(model).filter(model.id == value).first():
+        raise HTTPException(status_code=400, detail=f"{field_name} does not reference an existing {model.__tablename__}")
+    return value
+
+def resolve_gender_fk(gender_fk: int | None, db: Session):
+    if gender_fk is None:
+        return None
+    row = db.query(database_models.commonmaster).filter(database_models.commonmaster.id == gender_fk).first()
+    if not row or row.tag != "gender":
+        raise HTTPException(status_code=400, detail="gender_fk must reference a commonmaster row tagged 'gender'")
+    return gender_fk
+
 def serialize_user(db_user: database_models.User, db: Session):
     usergroup_description = None
     capabilities = []
@@ -88,6 +105,29 @@ def serialize_user(db_user: database_models.User, db: Session):
                 rows = db.query(database_models.capabilitymaster).filter(database_models.capabilitymaster.id.in_(capability_ids)).all()
                 capabilities = [row.name for row in rows]
 
+    gender_name = None
+    if db_user.gender_fk:
+        gender_row = db.query(database_models.commonmaster).filter(database_models.commonmaster.id == db_user.gender_fk).first()
+        gender_name = gender_row.name if gender_row else None
+
+    country_name = None
+    if db_user.country_fk:
+        country_row = db.query(database_models.country).filter(database_models.country.id == db_user.country_fk).first()
+        country_name = country_row.country if country_row else None
+
+    pincode_value = None
+    city = None
+    state_name = None
+    if db_user.pincode_fk:
+        pincode_row = db.query(database_models.pincode).filter(database_models.pincode.id == db_user.pincode_fk).first()
+        if pincode_row:
+            pincode_value = pincode_row.pincode
+            district_row = db.query(database_models.district).filter(database_models.district.id == pincode_row.district_fk).first()
+            if district_row:
+                city = district_row.city
+                state_row = db.query(database_models.state).filter(database_models.state.id == district_row.state_fk).first()
+                state_name = state_row.state if state_row else None
+
     return {
         "id": db_user.id,
         "username": db_user.username,
@@ -99,6 +139,15 @@ def serialize_user(db_user: database_models.User, db: Session):
         "usergroup_fk": db_user.usergroup_fk,
         "usergroup_description": usergroup_description,
         "capabilities": capabilities,
+        "profile_photo": db_user.profile_photo,
+        "gender_fk": db_user.gender_fk,
+        "gender_name": gender_name,
+        "country_fk": db_user.country_fk,
+        "country_name": country_name,
+        "pincode_fk": db_user.pincode_fk,
+        "pincode_value": pincode_value,
+        "city": city,
+        "state_name": state_name,
     }
 
 @app.get("/")
@@ -423,10 +472,18 @@ def create_user(
     network_access: str = database_models.NetworkAccess.OPEN.value,
     ip_addresses: list[str] | None = Query(default=None),
     is_active: int = 1,
+    gender_fk: int | None = None,
+    country_fk: int | None = None,
+    pincode_fk: int | None = None,
+    profile_photo: str | None = Body(default=None),
     db: Session = Depends(get_db),
 ):
     usergroup_fk = resolve_usergroup_fk(usergroup_fk, db)
     network_access, ip_addresses = resolve_network_access(network_access, ip_addresses)
+    gender_fk = resolve_gender_fk(gender_fk, db)
+    country_fk = resolve_optional_fk(country_fk, database_models.country, "country_fk", db)
+    pincode_fk = resolve_optional_fk(pincode_fk, database_models.pincode, "pincode_fk", db)
+    profile_photo = validate_flag(profile_photo)
     db_user = database_models.User(
         username=username,
         email=email,
@@ -436,6 +493,10 @@ def create_user(
         network_access=network_access,
         ip_addresses=ip_addresses,
         usergroup_fk=usergroup_fk,
+        gender_fk=gender_fk,
+        country_fk=country_fk,
+        pincode_fk=pincode_fk,
+        profile_photo=profile_photo,
     )
     db.add(db_user)
     db.commit()
@@ -453,6 +514,10 @@ def update_user(
     ip_addresses: list[str] | None = Query(default=None),
     usergroup_fk: int | None = None,
     is_active: int = None,
+    gender_fk: int | None = None,
+    country_fk: int | None = None,
+    pincode_fk: int | None = None,
+    profile_photo: str | None = Body(default=None),
     db: Session = Depends(get_db),
 ):
     db_user = db.query(database_models.User).filter(database_models.User.id == user_id).first()
@@ -468,6 +533,14 @@ def update_user(
         db_user.hashed_password = pwd_context.hash(password)
     if is_active is not None:
         db_user.is_active = is_active
+    if gender_fk is not None:
+        db_user.gender_fk = resolve_gender_fk(gender_fk, db)
+    if country_fk is not None:
+        db_user.country_fk = resolve_optional_fk(country_fk, database_models.country, "country_fk", db)
+    if pincode_fk is not None:
+        db_user.pincode_fk = resolve_optional_fk(pincode_fk, database_models.pincode, "pincode_fk", db)
+    if profile_photo is not None:
+        db_user.profile_photo = validate_flag(profile_photo)
     effective_usergroup_fk = usergroup_fk if usergroup_fk is not None else db_user.usergroup_fk
     db_user.usergroup_fk = resolve_usergroup_fk(effective_usergroup_fk, db)
     if network_access is not None or ip_addresses is not None:
@@ -594,3 +667,339 @@ def update_capabilitymaster(capability_id: int, name: str = None, description: s
     db.commit()
     db.refresh(db_capabilitymaster)
     return db_capabilitymaster
+
+# --- Geography: country / state / district / pincode ---
+
+ALPHANUMERIC_RE = re.compile(r"^[A-Za-z0-9]+$")
+ALPHANUMERIC_SPACE_RE = re.compile(r"^[A-Za-z0-9 ]+$")
+ALPHA_RE = re.compile(r"^[A-Za-z ]+$")
+PHONE_CODE_RE = re.compile(r"^\+?[0-9]+$")
+
+def require_alphanumeric(value: str, field_name: str, max_length: int):
+    if not value or len(value) > max_length or not ALPHANUMERIC_RE.match(value):
+        raise HTTPException(status_code=400, detail=f"{field_name} must be 1-{max_length} alphanumeric characters")
+    return value
+
+# Country names are alphanumeric like the other geography fields, but
+# realistically need spaces ("United States", "New Zealand") -- unlike the
+# short codes (country_code, country_phone_code, pincode) which don't.
+def require_alphanumeric_name(value: str, field_name: str, max_length: int):
+    if not value or len(value) > max_length or not ALPHANUMERIC_SPACE_RE.match(value):
+        raise HTTPException(status_code=400, detail=f"{field_name} must be 1-{max_length} alphanumeric characters")
+    return value
+
+# Phone codes are conventionally written with a leading "+" (e.g. "+91",
+# "+44"), which isn't alphanumeric -- allow an optional leading "+" followed
+# by digits instead of reusing require_alphanumeric.
+def require_phone_code(value: str, field_name: str, max_length: int):
+    if not value or len(value) > max_length or not PHONE_CODE_RE.match(value):
+        raise HTTPException(status_code=400, detail=f"{field_name} must be up to {max_length} characters: an optional leading '+' followed by digits")
+    return value
+
+def require_alpha(value: str, field_name: str, max_length: int):
+    if not value or len(value) > max_length or not ALPHA_RE.match(value):
+        raise HTTPException(status_code=400, detail=f"{field_name} must be 1-{max_length} alphabetic characters")
+    return value
+
+def require_fixed_alphanumeric(value: str, field_name: str, length: int):
+    if not value or len(value) != length or not ALPHANUMERIC_RE.match(value):
+        raise HTTPException(status_code=400, detail=f"{field_name} must be exactly {length} alphanumeric characters")
+    return value
+
+def validate_flag(flag: str | None):
+    if flag is None:
+        return None
+    try:
+        base64.b64decode(flag, validate=True)
+    except Exception:
+        raise HTTPException(status_code=400, detail="flag must be valid base64")
+    return flag
+
+def commit_or_conflict(db: Session, message: str):
+    try:
+        db.commit()
+    except IntegrityError:
+        db.rollback()
+        raise HTTPException(status_code=400, detail=message)
+
+def resolve_country_fk(country_fk: int, db: Session):
+    if not db.query(database_models.country).filter(database_models.country.id == country_fk).first():
+        raise HTTPException(status_code=400, detail="country_fk does not reference an existing country")
+    return country_fk
+
+def resolve_state_fk(state_fk: int, db: Session):
+    if not db.query(database_models.state).filter(database_models.state.id == state_fk).first():
+        raise HTTPException(status_code=400, detail="state_fk does not reference an existing state")
+    return state_fk
+
+def resolve_district_fk(district_fk: int, db: Session):
+    if not db.query(database_models.district).filter(database_models.district.id == district_fk).first():
+        raise HTTPException(status_code=400, detail="district_fk does not reference an existing district")
+    return district_fk
+
+def serialize_country(db_country: database_models.country):
+    return {
+        "id": db_country.id,
+        "country": db_country.country,
+        "flag": db_country.flag,
+        "country_code": db_country.country_code,
+        "country_phone_code": db_country.country_phone_code,
+        "currency": db_country.currency,
+    }
+
+def serialize_state(db_state: database_models.state, db: Session):
+    country_row = db.query(database_models.country).filter(database_models.country.id == db_state.country_fk).first()
+    return {
+        "id": db_state.id,
+        "state": db_state.state,
+        "country_fk": db_state.country_fk,
+        "country_name": country_row.country if country_row else None,
+    }
+
+def serialize_district(db_district: database_models.district, db: Session):
+    state_row = db.query(database_models.state).filter(database_models.state.id == db_district.state_fk).first()
+    country_row = None
+    if state_row:
+        country_row = db.query(database_models.country).filter(database_models.country.id == state_row.country_fk).first()
+    return {
+        "id": db_district.id,
+        "city": db_district.city,
+        "district": db_district.district,
+        "tag": db_district.tag,
+        "state_fk": db_district.state_fk,
+        "state_name": state_row.state if state_row else None,
+        "country_name": country_row.country if country_row else None,
+    }
+
+def serialize_pincode(db_pincode: database_models.pincode, db: Session):
+    district_row = db.query(database_models.district).filter(database_models.district.id == db_pincode.district_fk).first()
+    state_row = None
+    country_row = None
+    if district_row:
+        state_row = db.query(database_models.state).filter(database_models.state.id == district_row.state_fk).first()
+        if state_row:
+            country_row = db.query(database_models.country).filter(database_models.country.id == state_row.country_fk).first()
+    return {
+        "id": db_pincode.id,
+        "pincode": db_pincode.pincode,
+        "district_fk": db_pincode.district_fk,
+        "district_name": district_row.district if district_row else None,
+        "city": district_row.city if district_row else None,
+        "state_name": state_row.state if state_row else None,
+        "country_name": country_row.country if country_row else None,
+    }
+
+@app.get("/country/")
+def read_countries(db: Session = Depends(get_db)):
+    return [serialize_country(c) for c in db.query(database_models.country).all()]
+
+@app.get("/country/{country_id}")
+def read_country(country_id: int, db: Session = Depends(get_db)):
+    db_country = db.query(database_models.country).filter(database_models.country.id == country_id).first()
+    if db_country:
+        return serialize_country(db_country)
+    return {"message": "Country not found!"}
+
+@app.post("/country/")
+def create_country(
+    country: str,
+    country_code: str,
+    country_phone_code: str,
+    flag: str | None = Body(default=None),
+    currency: dict | None = Body(default=None),
+    db: Session = Depends(get_db),
+):
+    country = require_alphanumeric_name(country, "country", 50)
+    country_code = require_alphanumeric(country_code, "country_code", 3)
+    country_phone_code = require_phone_code(country_phone_code, "country_phone_code", 3)
+    flag = validate_flag(flag)
+    db_country = database_models.country(
+        country=country,
+        flag=flag,
+        country_code=country_code,
+        country_phone_code=country_phone_code,
+        currency=currency,
+    )
+    db.add(db_country)
+    commit_or_conflict(db, "A country with this name, code, or phone code already exists")
+    db.refresh(db_country)
+    return serialize_country(db_country)
+
+@app.put("/country/{country_id}")
+def update_country(
+    country_id: int,
+    country: str = None,
+    country_code: str = None,
+    country_phone_code: str = None,
+    flag: str | None = Body(default=None),
+    currency: dict | None = Body(default=None),
+    db: Session = Depends(get_db),
+):
+    db_country = db.query(database_models.country).filter(database_models.country.id == country_id).first()
+    if not db_country:
+        return {"message": "Country not found!"}
+    if country is not None:
+        db_country.country = require_alphanumeric_name(country, "country", 50)
+    if country_code is not None:
+        db_country.country_code = require_alphanumeric(country_code, "country_code", 3)
+    if country_phone_code is not None:
+        db_country.country_phone_code = require_phone_code(country_phone_code, "country_phone_code", 3)
+    if flag is not None:
+        db_country.flag = validate_flag(flag)
+    if currency is not None:
+        db_country.currency = currency
+    commit_or_conflict(db, "A country with this name, code, or phone code already exists")
+    db.refresh(db_country)
+    return serialize_country(db_country)
+
+@app.delete("/country/{country_id}")
+def delete_country(country_id: int, db: Session = Depends(get_db)):
+    db_country = db.query(database_models.country).filter(database_models.country.id == country_id).first()
+    if not db_country:
+        return {"message": "Country not found!"}
+    in_use = db.query(database_models.state).filter(database_models.state.country_fk == country_id).first()
+    if in_use:
+        raise HTTPException(status_code=400, detail="This country is still used by one or more states and can't be deleted")
+    db.delete(db_country)
+    db.commit()
+    return {"message": "Country deleted"}
+
+@app.get("/state/")
+def read_states(db: Session = Depends(get_db)):
+    return [serialize_state(s, db) for s in db.query(database_models.state).all()]
+
+@app.get("/state/{state_id}")
+def read_state(state_id: int, db: Session = Depends(get_db)):
+    db_state = db.query(database_models.state).filter(database_models.state.id == state_id).first()
+    if db_state:
+        return serialize_state(db_state, db)
+    return {"message": "State not found!"}
+
+@app.post("/state/")
+def create_state(state: str, country_fk: int, db: Session = Depends(get_db)):
+    state = require_alpha(state, "state", 25)
+    country_fk = resolve_country_fk(country_fk, db)
+    db_state = database_models.state(state=state, country_fk=country_fk)
+    db.add(db_state)
+    commit_or_conflict(db, "A state with this name already exists")
+    db.refresh(db_state)
+    return serialize_state(db_state, db)
+
+@app.put("/state/{state_id}")
+def update_state(state_id: int, state: str = None, country_fk: int = None, db: Session = Depends(get_db)):
+    db_state = db.query(database_models.state).filter(database_models.state.id == state_id).first()
+    if not db_state:
+        return {"message": "State not found!"}
+    if state is not None:
+        db_state.state = require_alpha(state, "state", 25)
+    if country_fk is not None:
+        db_state.country_fk = resolve_country_fk(country_fk, db)
+    commit_or_conflict(db, "A state with this name already exists")
+    db.refresh(db_state)
+    return serialize_state(db_state, db)
+
+@app.delete("/state/{state_id}")
+def delete_state(state_id: int, db: Session = Depends(get_db)):
+    db_state = db.query(database_models.state).filter(database_models.state.id == state_id).first()
+    if not db_state:
+        return {"message": "State not found!"}
+    in_use = db.query(database_models.district).filter(database_models.district.state_fk == state_id).first()
+    if in_use:
+        raise HTTPException(status_code=400, detail="This state is still used by one or more districts and can't be deleted")
+    db.delete(db_state)
+    db.commit()
+    return {"message": "State deleted"}
+
+@app.get("/district/")
+def read_districts(db: Session = Depends(get_db)):
+    return [serialize_district(d, db) for d in db.query(database_models.district).all()]
+
+@app.get("/district/{district_id}")
+def read_district(district_id: int, db: Session = Depends(get_db)):
+    db_district = db.query(database_models.district).filter(database_models.district.id == district_id).first()
+    if db_district:
+        return serialize_district(db_district, db)
+    return {"message": "District not found!"}
+
+@app.post("/district/")
+def create_district(city: str, district: str, state_fk: int, tag: dict | None = None, db: Session = Depends(get_db)):
+    city = require_alpha(city, "city", 25)
+    district = require_alpha(district, "district", 25)
+    state_fk = resolve_state_fk(state_fk, db)
+    db_district = database_models.district(city=city, district=district, tag=tag, state_fk=state_fk)
+    db.add(db_district)
+    commit_or_conflict(db, "A district with this name already exists")
+    db.refresh(db_district)
+    return serialize_district(db_district, db)
+
+@app.put("/district/{district_id}")
+def update_district(district_id: int, city: str = None, district: str = None, state_fk: int = None, tag: dict = None, db: Session = Depends(get_db)):
+    db_district = db.query(database_models.district).filter(database_models.district.id == district_id).first()
+    if not db_district:
+        return {"message": "District not found!"}
+    if city is not None:
+        db_district.city = require_alpha(city, "city", 25)
+    if district is not None:
+        db_district.district = require_alpha(district, "district", 25)
+    if state_fk is not None:
+        db_district.state_fk = resolve_state_fk(state_fk, db)
+    if tag is not None:
+        db_district.tag = tag
+    commit_or_conflict(db, "A district with this name already exists")
+    db.refresh(db_district)
+    return serialize_district(db_district, db)
+
+@app.delete("/district/{district_id}")
+def delete_district(district_id: int, db: Session = Depends(get_db)):
+    db_district = db.query(database_models.district).filter(database_models.district.id == district_id).first()
+    if not db_district:
+        return {"message": "District not found!"}
+    in_use = db.query(database_models.pincode).filter(database_models.pincode.district_fk == district_id).first()
+    if in_use:
+        raise HTTPException(status_code=400, detail="This district is still used by one or more pincodes and can't be deleted")
+    db.delete(db_district)
+    db.commit()
+    return {"message": "District deleted"}
+
+@app.get("/pincode/")
+def read_pincodes(db: Session = Depends(get_db)):
+    return [serialize_pincode(p, db) for p in db.query(database_models.pincode).all()]
+
+@app.get("/pincode/{pincode_id}")
+def read_pincode(pincode_id: int, db: Session = Depends(get_db)):
+    db_pincode = db.query(database_models.pincode).filter(database_models.pincode.id == pincode_id).first()
+    if db_pincode:
+        return serialize_pincode(db_pincode, db)
+    return {"message": "Pincode not found!"}
+
+@app.post("/pincode/")
+def create_pincode(pincode: str, district_fk: int, db: Session = Depends(get_db)):
+    pincode = require_fixed_alphanumeric(pincode, "pincode", 6)
+    district_fk = resolve_district_fk(district_fk, db)
+    db_pincode = database_models.pincode(pincode=pincode, district_fk=district_fk)
+    db.add(db_pincode)
+    db.commit()
+    db.refresh(db_pincode)
+    return serialize_pincode(db_pincode, db)
+
+@app.put("/pincode/{pincode_id}")
+def update_pincode(pincode_id: int, pincode: str = None, district_fk: int = None, db: Session = Depends(get_db)):
+    db_pincode = db.query(database_models.pincode).filter(database_models.pincode.id == pincode_id).first()
+    if not db_pincode:
+        return {"message": "Pincode not found!"}
+    if pincode is not None:
+        db_pincode.pincode = require_fixed_alphanumeric(pincode, "pincode", 6)
+    if district_fk is not None:
+        db_pincode.district_fk = resolve_district_fk(district_fk, db)
+    db.commit()
+    db.refresh(db_pincode)
+    return serialize_pincode(db_pincode, db)
+
+@app.delete("/pincode/{pincode_id}")
+def delete_pincode(pincode_id: int, db: Session = Depends(get_db)):
+    db_pincode = db.query(database_models.pincode).filter(database_models.pincode.id == pincode_id).first()
+    if not db_pincode:
+        return {"message": "Pincode not found!"}
+    db.delete(db_pincode)
+    db.commit()
+    return {"message": "Pincode deleted"}

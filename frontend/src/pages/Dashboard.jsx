@@ -33,7 +33,6 @@ import {
 } from "recharts";
 import { listTransactions } from "../api/transactions";
 import { useAuth } from "../auth/AuthContext";
-import { formatINR } from "../utils/currency";
 import {
   addMonths,
   dayOfMonth,
@@ -44,6 +43,14 @@ import {
 } from "../utils/dashboardMonth";
 
 const PIE_COLORS = ["#1976d2", "#42a5f5", "#90caf9", "#546e7a", "#b0bec5", "#cfd8dc"];
+
+const inrWhole = new Intl.NumberFormat("en-IN", { style: "currency", currency: "INR", maximumFractionDigits: 0 });
+const inrPrecise = new Intl.NumberFormat("en-IN", { style: "currency", currency: "INR", maximumFractionDigits: 2 });
+
+function formatINR(amount, { precise = false } = {}) {
+  const value = Number(amount) || 0;
+  return precise ? inrPrecise.format(value) : inrWhole.format(value);
+}
 const FUNNEL_COLORS = ["#0d47a1", "#1565c0", "#1976d2", "#42a5f5", "#90caf9"];
 
 function summarizeMonth(transactions, monthDate) {

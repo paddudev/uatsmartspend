@@ -33,6 +33,22 @@ import TransactionCreate from "./pages/TransactionCreate";
 import TransactionView from "./pages/TransactionView";
 import TransactionEdit from "./pages/TransactionEdit";
 import CategoryWiseTransactionsReport from "./pages/CategoryWiseTransactionsReport";
+import Countries from "./pages/Countries";
+import CountryCreate from "./pages/CountryCreate";
+import CountryView from "./pages/CountryView";
+import CountryEdit from "./pages/CountryEdit";
+import States from "./pages/States";
+import StateCreate from "./pages/StateCreate";
+import StateView from "./pages/StateView";
+import StateEdit from "./pages/StateEdit";
+import Districts from "./pages/Districts";
+import DistrictCreate from "./pages/DistrictCreate";
+import DistrictView from "./pages/DistrictView";
+import DistrictEdit from "./pages/DistrictEdit";
+import Pincodes from "./pages/Pincodes";
+import PincodeCreate from "./pages/PincodeCreate";
+import PincodeView from "./pages/PincodeView";
+import PincodeEdit from "./pages/PincodeEdit";
 
 function AppIndex() {
   const { user } = useAuth();
@@ -112,6 +128,34 @@ export default function App() {
 
           <Route element={<RequireCapability capability="get_reports" />}>
             <Route path="reports/category-wise-transactions" element={<CategoryWiseTransactionsReport />} />
+          </Route>
+
+          <Route element={<RequireCapability capability="get_country" />}>
+            <Route path="geography/country" element={<Countries />} />
+            <Route path="geography/country/new" element={<CountryCreate />} />
+            <Route path="geography/country/:countryId" element={<CountryView />} />
+            <Route path="geography/country/:countryId/edit" element={<CountryEdit />} />
+          </Route>
+
+          <Route element={<RequireCapability capability="get_state" />}>
+            <Route path="geography/state" element={<States />} />
+            <Route path="geography/state/new" element={<StateCreate />} />
+            <Route path="geography/state/:stateId" element={<StateView />} />
+            <Route path="geography/state/:stateId/edit" element={<StateEdit />} />
+          </Route>
+
+          <Route element={<RequireCapability capability="get_district" />}>
+            <Route path="geography/district" element={<Districts />} />
+            <Route path="geography/district/new" element={<DistrictCreate />} />
+            <Route path="geography/district/:districtId" element={<DistrictView />} />
+            <Route path="geography/district/:districtId/edit" element={<DistrictEdit />} />
+          </Route>
+
+          <Route element={<RequireCapability capability="get_pincode" />}>
+            <Route path="geography/pincode" element={<Pincodes />} />
+            <Route path="geography/pincode/new" element={<PincodeCreate />} />
+            <Route path="geography/pincode/:pincodeId" element={<PincodeView />} />
+            <Route path="geography/pincode/:pincodeId/edit" element={<PincodeEdit />} />
           </Route>
         </Route>
       </Route>

@@ -25,7 +25,7 @@ export default function TransactionCategoryFields({
   useEffect(() => {
     Promise.all([listCommonMasters(), listCategoryMasters(), listProductsAndServices()]).then(
       ([commons, cats, prods]) => {
-        setCommonMasters(commons);
+        setCommonMasters(commons.filter((c) => c.tag === "transaction type"));
         setCategories(cats);
         setProducts(prods);
       }

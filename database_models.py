@@ -1,6 +1,6 @@
 import enum
 
-from sqlalchemy import Column, Integer, String, Float, ForeignKey
+from sqlalchemy import Column, Integer, String, Float, ForeignKey, Text
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.orm import Mapped, mapped_column, relationship
@@ -36,6 +36,10 @@ class User(Base):
     network_access: Mapped[str] = mapped_column(String(20), nullable=False, default=NetworkAccess.OPEN.value, server_default=NetworkAccess.OPEN.value)
     ip_addresses: Mapped[list | None] = mapped_column(JSONB, nullable=True)
     usergroup_fk: Mapped[int] = mapped_column(ForeignKey("usergroup.id"), nullable=False)
+    profile_photo: Mapped[str | None] = mapped_column(Text, nullable=True)
+    gender_fk: Mapped[int | None] = mapped_column(ForeignKey("commonmaster.id"), nullable=True)
+    country_fk: Mapped[int | None] = mapped_column(ForeignKey("country.id"), nullable=True)
+    pincode_fk: Mapped[int | None] = mapped_column(ForeignKey("pincode.id"), nullable=True)
 
     groups: Mapped[list[usergroup]] = relationship(back_populates="user", cascade="all, delete-orphan", foreign_keys="usergroup.userid_fk")
 
@@ -82,5 +86,32 @@ class transactions(Base):
     transaction_date = Column(String, nullable=False)
     userid_fk = Column(Integer, nullable=False)
     note = Column(String)
-    
 
+class country(Base):
+    __tablename__ = "country"
+    id: Mapped[int] = mapped_column(primary_key=True, index=True)
+    country: Mapped[str] = mapped_column(String(50), unique=True, nullable=False)
+    flag: Mapped[str | None] = mapped_column(Text, nullable=True)
+    country_code: Mapped[str] = mapped_column(String(3), unique=True, nullable=False)
+    country_phone_code: Mapped[str] = mapped_column(String(3), unique=True, nullable=False)
+    currency: Mapped[dict | None] = mapped_column(JSONB, nullable=True)
+
+class state(Base):
+    __tablename__ = "state"
+    id: Mapped[int] = mapped_column(primary_key=True, index=True)
+    state: Mapped[str] = mapped_column(String(25), unique=True, nullable=False)
+    country_fk: Mapped[int] = mapped_column(ForeignKey("country.id"), nullable=False)
+
+class district(Base):
+    __tablename__ = "district"
+    id: Mapped[int] = mapped_column(primary_key=True, index=True)
+    city: Mapped[str] = mapped_column(String(25), nullable=False)
+    district: Mapped[str] = mapped_column(String(25), unique=True, nullable=False)
+    tag: Mapped[dict | None] = mapped_column(JSONB, nullable=True)
+    state_fk: Mapped[int] = mapped_column(ForeignKey("state.id"), nullable=False)
+
+class pincode(Base):
+    __tablename__ = "pincode"
+    id: Mapped[int] = mapped_column(primary_key=True, index=True)
+    pincode: Mapped[str] = mapped_column(String(6), nullable=False)
+    district_fk: Mapped[int] = mapped_column(ForeignKey("district.id"), nullable=False)

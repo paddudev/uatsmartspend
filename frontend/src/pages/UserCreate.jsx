@@ -13,6 +13,7 @@ import {
 import { createUser } from "../api/users";
 import { listUsergroups } from "../api/usergroups";
 import NetworkAccessFields from "../components/NetworkAccessFields";
+import UserProfileFields from "../components/UserProfileFields";
 import { useNotification } from "../notifications/NotificationContext";
 
 const emptyForm = {
@@ -23,6 +24,10 @@ const emptyForm = {
   usergroup_fk: "",
   network_access: "open",
   ip_addresses: [],
+  profile_photo: "",
+  gender_fk: "",
+  country_fk: "",
+  pincode_fk: "",
 };
 
 export default function UserCreate() {
@@ -65,6 +70,10 @@ export default function UserCreate() {
         ip_addresses: form.network_access === "limited" ? form.ip_addresses : undefined,
         usergroup_fk: form.usergroup_fk,
         is_active: 1,
+        profile_photo: form.profile_photo || undefined,
+        gender_fk: form.gender_fk || undefined,
+        country_fk: form.country_fk || undefined,
+        pincode_fk: form.pincode_fk || undefined,
       });
       notifySuccess("User created successfully.");
       navigate("/app/account");
@@ -148,6 +157,17 @@ export default function UserCreate() {
                 onIpAddressesChange={(ips) => handleChange("ip_addresses", ips)}
               />
             </Box>
+
+            <UserProfileFields
+              profilePhoto={form.profile_photo}
+              onProfilePhotoChange={(value) => handleChange("profile_photo", value)}
+              genderId={form.gender_fk}
+              onGenderChange={(value) => handleChange("gender_fk", value)}
+              countryId={form.country_fk}
+              onCountryChange={(value) => handleChange("country_fk", value)}
+              pincodeId={form.pincode_fk}
+              onPincodeChange={(value) => handleChange("pincode_fk", value)}
+            />
 
             <Stack direction="row" spacing={2} sx={{ gridColumn: "1 / -1" }}>
               <Button type="submit" variant="contained" disabled={submitting}>
