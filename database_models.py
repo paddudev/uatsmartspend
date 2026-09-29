@@ -1,6 +1,7 @@
 import enum
 
-from sqlalchemy import Column, Integer, String, Float, ForeignKey, Text
+from sqlalchemy import Column, Integer, String, Float, ForeignKey, Text, DateTime, UniqueConstraint
+from sqlalchemy.sql import func
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.orm import Mapped, mapped_column, relationship
@@ -75,17 +76,59 @@ class productsandservices(Base):
     id= Column(Integer, primary_key=True, index=True)
     name = Column(String, unique = True, index=True, nullable=False)
     description = Column(String)
-    categorymaster_fk = Column(Integer, nullable=False)
     userid_fk = Column(Integer, nullable=False)
+
+class productsandservices_categories(Base):
+    __tablename__ = "productsandservices_categories"
+    id: Mapped[int] = mapped_column(primary_key=True, index=True)
+    productsandservices_fk: Mapped[int] = mapped_column(ForeignKey("productsandservices.id"), nullable=False)
+    categorymaster_fk: Mapped[int] = mapped_column(ForeignKey("categorymaster.id"), nullable=False)
+
+    __table_args__ = (UniqueConstraint("productsandservices_fk", "categorymaster_fk"),)
+
+class productsandservices_brands(Base):
+    __tablename__ = "productsandservices_brands"
+    id: Mapped[int] = mapped_column(primary_key=True, index=True)
+    productsandservices_fk: Mapped[int] = mapped_column(ForeignKey("productsandservices.id"), nullable=False)
+    brand_fk: Mapped[int] = mapped_column(ForeignKey("commonmaster.id"), nullable=False)
+
+    __table_args__ = (UniqueConstraint("productsandservices_fk", "brand_fk"),)
 
 class transactions(Base):
     __tablename__ = "transactions"
     id = Column(Integer, primary_key=True, index=True)
     amount = Column(Float, nullable=False)
-    products_services_fk = Column(Integer, nullable=False)
+    products_services_fk = Column(Integer, nullable=True)
+    categorymaster_fk = Column(Integer, nullable=True)
+    brand_fk = Column(Integer, nullable=True)
     transaction_date = Column(String, nullable=False)
     userid_fk = Column(Integer, nullable=False)
     note = Column(String)
+    source = Column(String, nullable=False, default="manual", server_default="manual")
+    bill_upload_fk = Column(Integer, nullable=True)
+    raw_item_text = Column(Text, nullable=True)
+    classification_confidence = Column(Float, nullable=True)
+
+class bill_uploads(Base):
+    __tablename__ = "bill_uploads"
+    id = Column(Integer, primary_key=True, index=True)
+    userid_fk = Column(Integer, nullable=False)
+    file_data = Column(Text, nullable=False)
+    file_type = Column(String, nullable=False)
+    uploaded_at = Column(DateTime(timezone=True), nullable=False, server_default=func.now())
+    status = Column(String, nullable=False, default="processed", server_default="processed")
+    raw_ocr_text = Column(Text, nullable=True)
+    error_message = Column(Text, nullable=True)
+
+class bill_item_aliases(Base):
+    __tablename__ = "bill_item_aliases"
+    id = Column(Integer, primary_key=True, index=True)
+    productsandservices_fk = Column(Integer, nullable=False)
+    categorymaster_fk = Column(Integer, nullable=True)
+    brand_fk = Column(Integer, nullable=True)
+    userid_fk = Column(Integer, nullable=False)
+    alias_text = Column(String, nullable=False)
+    created_at = Column(DateTime(timezone=True), nullable=False, server_default=func.now())
 
 class country(Base):
     __tablename__ = "country"

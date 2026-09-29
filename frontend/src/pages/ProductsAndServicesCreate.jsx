@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import {
   Alert,
+  Autocomplete,
   Box,
   Button,
   MenuItem,
@@ -10,11 +11,11 @@ import {
   TextField,
   Typography,
 } from "@mui/material";
-import { createProductsAndServices, listCategoryMasters } from "../api/masters";
+import { createProductsAndServices, listCategoryMasters, listCommonMasters } from "../api/masters";
 import { listUsers } from "../api/users";
 import { useNotification } from "../notifications/NotificationContext";
 
-const emptyForm = { name: "", description: "", categorymaster_fk: "", userid_fk: "" };
+const emptyForm = { name: "", description: "", categorymaster_fks: [], userid_fk: "", brand_fks: [] };
 
 export default function ProductsAndServicesCreate() {
   const navigate = useNavigate();
@@ -22,14 +23,16 @@ export default function ProductsAndServicesCreate() {
   const [form, setForm] = useState(emptyForm);
   const [users, setUsers] = useState([]);
   const [categories, setCategories] = useState([]);
+  const [brands, setBrands] = useState([]);
   const [error, setError] = useState("");
   const [submitting, setSubmitting] = useState(false);
 
   useEffect(() => {
-    Promise.all([listUsers(), listCategoryMasters()])
-      .then(([allUsers, allCategories]) => {
+    Promise.all([listUsers(), listCategoryMasters(), listCommonMasters()])
+      .then(([allUsers, allCategories, allCommonMasters]) => {
         setUsers(allUsers);
         setCategories(allCategories);
+        setBrands(allCommonMasters.filter((c) => c.tag === "brands"));
       })
       .catch(() => setError("Unable to load users or categories."));
   }, []);
@@ -40,14 +43,19 @@ export default function ProductsAndServicesCreate() {
 
   async function handleSubmit(e) {
     e.preventDefault();
+    if (!form.categorymaster_fks.length) {
+      setError("Select at least one category.");
+      return;
+    }
     setSubmitting(true);
     setError("");
     try {
       await createProductsAndServices({
         name: form.name,
         description: form.description,
-        categorymaster_fk: form.categorymaster_fk,
+        categorymaster_fks: form.categorymaster_fks,
         userid_fk: form.userid_fk,
+        brand_fks: form.brand_fks.length ? form.brand_fks : [""],
       });
       notifySuccess("Product/service created successfully.");
       navigate("/app/master/products");
@@ -93,20 +101,6 @@ export default function ProductsAndServicesCreate() {
             />
             <TextField
               select
-              label="Category"
-              value={form.categorymaster_fk}
-              onChange={(e) => handleChange("categorymaster_fk", e.target.value)}
-              required
-              fullWidth
-            >
-              {categories.map((c) => (
-                <MenuItem key={c.id} value={c.id}>
-                  {c.name}
-                </MenuItem>
-              ))}
-            </TextField>
-            <TextField
-              select
               label="Owner"
               value={form.userid_fk}
               onChange={(e) => handleChange("userid_fk", e.target.value)}
@@ -119,6 +113,28 @@ export default function ProductsAndServicesCreate() {
                 </MenuItem>
               ))}
             </TextField>
+            <Autocomplete
+              multiple
+              options={categories}
+              getOptionLabel={(option) => option.name}
+              isOptionEqualToValue={(option, value) => option.id === value.id}
+              value={categories.filter((c) => form.categorymaster_fks.includes(c.id))}
+              onChange={(e, newValue) => handleChange("categorymaster_fks", newValue.map((v) => v.id))}
+              renderInput={(params) => (
+                <TextField {...params} label="Categories" placeholder="Select categories" required />
+              )}
+              sx={{ gridColumn: { xs: "1 / -1", md: "span 2" } }}
+            />
+            <Autocomplete
+              multiple
+              options={brands}
+              getOptionLabel={(option) => option.name}
+              isOptionEqualToValue={(option, value) => option.id === value.id}
+              value={brands.filter((b) => form.brand_fks.includes(b.id))}
+              onChange={(e, newValue) => handleChange("brand_fks", newValue.map((v) => v.id))}
+              renderInput={(params) => <TextField {...params} label="Brands" placeholder="Select brands" />}
+              sx={{ gridColumn: { xs: "1 / -1", md: "span 2" } }}
+            />
 
             <Stack direction="row" spacing={2} sx={{ gridColumn: "1 / -1" }}>
               <Button type="submit" variant="contained" disabled={submitting}>

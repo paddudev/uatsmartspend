@@ -4,6 +4,7 @@ import {
   Alert,
   Box,
   Button,
+  Chip,
   IconButton,
   Paper,
   Stack,
@@ -79,7 +80,8 @@ export default function ProductsAndServicesList() {
             <TableRow>
               <TableCell>Name</TableCell>
               <TableCell>Description</TableCell>
-              <TableCell>Category</TableCell>
+              <TableCell>Categories</TableCell>
+              <TableCell>Brands</TableCell>
               <TableCell>Owner</TableCell>
               <TableCell align="right">Actions</TableCell>
             </TableRow>
@@ -87,7 +89,7 @@ export default function ProductsAndServicesList() {
           <TableBody>
             {!loading && items.length === 0 && (
               <TableRow>
-                <TableCell colSpan={5} align="center">
+                <TableCell colSpan={6} align="center">
                   No products or services found.
                 </TableCell>
               </TableRow>
@@ -103,7 +105,28 @@ export default function ProductsAndServicesList() {
               >
                 <TableCell>{item.name}</TableCell>
                 <TableCell>{item.description}</TableCell>
-                <TableCell>{item.category_name || "—"}</TableCell>
+                <TableCell>
+                  {item.categories && item.categories.length > 0 ? (
+                    <Stack direction="row" spacing={0.5} sx={{ flexWrap: "wrap", rowGap: 0.5 }}>
+                      {item.categories.map((c) => (
+                        <Chip key={c.id} label={c.name} size="small" variant="outlined" />
+                      ))}
+                    </Stack>
+                  ) : (
+                    "—"
+                  )}
+                </TableCell>
+                <TableCell>
+                  {item.brands && item.brands.length > 0 ? (
+                    <Stack direction="row" spacing={0.5} sx={{ flexWrap: "wrap", rowGap: 0.5 }}>
+                      {item.brands.map((b) => (
+                        <Chip key={b.id} label={b.name} size="small" />
+                      ))}
+                    </Stack>
+                  ) : (
+                    "—"
+                  )}
+                </TableCell>
                 <TableCell>{item.owner_username || "—"}</TableCell>
                 <TableCell align="right">
                   <Box className="row-actions">

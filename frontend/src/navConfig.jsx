@@ -7,6 +7,7 @@ import LayersIcon from "@mui/icons-material/Layers";
 import CategoryIcon from "@mui/icons-material/Category";
 import Inventory2Icon from "@mui/icons-material/Inventory2";
 import ReceiptLongIcon from "@mui/icons-material/ReceiptLong";
+import UploadFileIcon from "@mui/icons-material/UploadFile";
 import AssessmentIcon from "@mui/icons-material/Assessment";
 import PublicIcon from "@mui/icons-material/Public";
 import FlagIcon from "@mui/icons-material/Flag";
@@ -38,7 +39,14 @@ export const navItems = [
       { label: "Products & Services", to: "/app/master/products", icon: <Inventory2Icon />, capability: "get_productandservices" },
     ],
   },
-  { label: "Transaction", to: "/app/transaction", icon: <ReceiptLongIcon />, capability: "get_transactions" },
+  {
+    label: "Transaction",
+    icon: <ReceiptLongIcon />,
+    children: [
+      { label: "Transactions", to: "/app/transaction", icon: <ReceiptLongIcon />, capability: "get_transactions" },
+      { label: "Upload Bill", to: "/app/transaction/bill-upload", icon: <UploadFileIcon />, capability: "post_bill" },
+    ],
+  },
   {
     label: "Reports",
     icon: <AssessmentIcon />,

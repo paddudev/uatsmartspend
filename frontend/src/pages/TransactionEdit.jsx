@@ -35,7 +35,11 @@ export default function TransactionEdit() {
           commonmaster_fk: t.commonmaster_fk || "",
           categorymaster_fk: t.categorymaster_fk || "",
           products_services_fk: t.products_services_fk || "",
+          brand_fk: t.brand_fk || "",
           note: t.note || "",
+          source: t.source,
+          raw_item_text: t.raw_item_text,
+          suggested_product_name: t.categorymaster_fk ? null : t.product_name,
         });
       })
       .catch(() => setError("Unable to load transaction."));
@@ -63,6 +67,8 @@ export default function TransactionEdit() {
         transaction_date: form.transaction_date,
         userid_fk: user.id,
         products_services_fk: form.products_services_fk,
+        categorymaster_fk: form.categorymaster_fk || null,
+        brand_fk: form.brand_fk,
         note: form.note,
       });
       notifySuccess("Transaction updated successfully.");
@@ -98,6 +104,15 @@ export default function TransactionEdit() {
                 <Alert severity="error">{error}</Alert>
               </Box>
             )}
+            {form.source === "draft" && form.raw_item_text && (
+              <Box sx={{ gridColumn: "1 / -1" }}>
+                <Alert severity="info">
+                  From uploaded bill: "{form.raw_item_text}" — select the matching category and product/service below.
+                  {form.suggested_product_name &&
+                    ` It looks like "${form.suggested_product_name}", which belongs to several categories — pick the one that applies.`}
+                </Alert>
+              </Box>
+            )}
             <TextField
               label="Amount"
               type="number"
@@ -125,9 +140,11 @@ export default function TransactionEdit() {
               commonMasterId={form.commonmaster_fk}
               categoryId={form.categorymaster_fk}
               productId={form.products_services_fk}
+              brandId={form.brand_fk}
               onCommonMasterChange={(value) => handleChange("commonmaster_fk", value)}
               onCategoryChange={(value) => handleChange("categorymaster_fk", value)}
               onProductChange={(value) => handleChange("products_services_fk", value)}
+              onBrandChange={(value) => handleChange("brand_fk", value)}
             />
 
             <TextField

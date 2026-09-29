@@ -11,27 +11,24 @@ import {
   Typography,
 } from "@mui/material";
 import { createCategoryMaster, listCommonMasters } from "../api/masters";
-import { listUsers } from "../api/users";
+import { useAuth } from "../auth/AuthContext";
 import { useNotification } from "../notifications/NotificationContext";
 
-const emptyForm = { name: "", commonmaster_fk: "", tag: "", userid_fk: "" };
+const emptyForm = { name: "", commonmaster_fk: "", tag: "" };
 
 export default function CategoryMasterCreate() {
   const navigate = useNavigate();
+  const { user } = useAuth();
   const { notifySuccess } = useNotification();
   const [form, setForm] = useState(emptyForm);
-  const [users, setUsers] = useState([]);
   const [commonMasters, setCommonMasters] = useState([]);
   const [error, setError] = useState("");
   const [submitting, setSubmitting] = useState(false);
 
   useEffect(() => {
-    Promise.all([listUsers(), listCommonMasters()])
-      .then(([allUsers, commons]) => {
-        setUsers(allUsers);
-        setCommonMasters(commons);
-      })
-      .catch(() => setError("Unable to load users or common masters."));
+    listCommonMasters()
+      .then((commons) => setCommonMasters(commons.filter((c) => c.tag === "transaction type")))
+      .catch(() => setError("Unable to load common masters."));
   }, []);
 
   function handleChange(field, value) {
@@ -47,7 +44,7 @@ export default function CategoryMasterCreate() {
         name: form.name,
         commonmaster_fk: form.commonmaster_fk,
         tag: form.tag,
-        userid_fk: form.userid_fk,
+        userid_fk: user.id,
       });
       notifySuccess("Category master created successfully.");
       navigate("/app/master/category");
@@ -105,20 +102,6 @@ export default function CategoryMasterCreate() {
               onChange={(e) => handleChange("tag", e.target.value)}
               fullWidth
             />
-            <TextField
-              select
-              label="Owner"
-              value={form.userid_fk}
-              onChange={(e) => handleChange("userid_fk", e.target.value)}
-              required
-              fullWidth
-            >
-              {users.map((u) => (
-                <MenuItem key={u.id} value={u.id}>
-                  {u.full_name || u.username}
-                </MenuItem>
-              ))}
-            </TextField>
 
             <Stack direction="row" spacing={2} sx={{ gridColumn: "1 / -1" }}>
               <Button type="submit" variant="contained" disabled={submitting}>

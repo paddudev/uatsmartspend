@@ -14,9 +14,11 @@ export default function TransactionCategoryFields({
   commonMasterId,
   categoryId,
   productId,
+  brandId,
   onCommonMasterChange,
   onCategoryChange,
   onProductChange,
+  onBrandChange,
 }) {
   const [commonMasters, setCommonMasters] = useState([]);
   const [categories, setCategories] = useState([]);
@@ -33,17 +35,26 @@ export default function TransactionCategoryFields({
   }, []);
 
   const visibleCategories = categories.filter((c) => c.commonmaster_fk === commonMasterId);
-  const visibleProducts = products.filter((p) => p.categorymaster_fk === categoryId);
+  const visibleProducts = products.filter((p) => (p.categories || []).some((c) => c.id === categoryId));
+  const selectedProduct = products.find((p) => p.id === productId);
+  const visibleBrands = selectedProduct?.brands || [];
 
   function handleCommonMasterChange(value) {
     onCommonMasterChange(Number(value));
     onCategoryChange("");
     onProductChange("");
+    onBrandChange("");
   }
 
   function handleCategoryChange(value) {
     onCategoryChange(value);
     onProductChange("");
+    onBrandChange("");
+  }
+
+  function handleProductChange(value) {
+    onProductChange(value);
+    onBrandChange("");
   }
 
   return (
@@ -83,7 +94,7 @@ export default function TransactionCategoryFields({
         select
         label="Product/Service"
         value={productId || ""}
-        onChange={(e) => onProductChange(e.target.value)}
+        onChange={(e) => handleProductChange(e.target.value)}
         required
         fullWidth
         disabled={!categoryId}
@@ -95,6 +106,25 @@ export default function TransactionCategoryFields({
           </MenuItem>
         ))}
       </TextField>
+
+      {visibleBrands.length > 0 && (
+        <TextField
+          select
+          label="Brand"
+          value={brandId || ""}
+          onChange={(e) => onBrandChange(e.target.value)}
+          fullWidth
+        >
+          <MenuItem value="">
+            <em>None</em>
+          </MenuItem>
+          {visibleBrands.map((b) => (
+            <MenuItem key={b.id} value={b.id}>
+              {b.name}
+            </MenuItem>
+          ))}
+        </TextField>
+      )}
     </>
   );
 }

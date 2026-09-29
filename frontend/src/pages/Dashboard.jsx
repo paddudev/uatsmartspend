@@ -207,7 +207,7 @@ export default function Dashboard() {
   const [monthCursor, setMonthCursor] = useState(() => new Date());
 
   useEffect(() => {
-    listTransactions({ userid_fk: user.id })
+    listTransactions({ userid_fk: user.id, source: ["manual", "ai"] })
       .then(setTransactions)
       .catch(() => setError("Unable to load dashboard data."))
       .finally(() => setLoading(false));

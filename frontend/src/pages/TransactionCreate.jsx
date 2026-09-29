@@ -21,6 +21,7 @@ const emptyForm = {
   commonmaster_fk: "",
   categorymaster_fk: "",
   products_services_fk: "",
+  brand_fk: "",
   note: "",
 };
 
@@ -56,6 +57,8 @@ export default function TransactionCreate() {
         transaction_date: form.transaction_date,
         userid_fk: user.id,
         products_services_fk: form.products_services_fk,
+        categorymaster_fk: form.categorymaster_fk || null,
+        brand_fk: form.brand_fk || null,
         note: form.note,
       });
       notifySuccess("Transaction created successfully.");
@@ -114,9 +117,11 @@ export default function TransactionCreate() {
               commonMasterId={form.commonmaster_fk}
               categoryId={form.categorymaster_fk}
               productId={form.products_services_fk}
+              brandId={form.brand_fk}
               onCommonMasterChange={(value) => handleChange("commonmaster_fk", value)}
               onCategoryChange={(value) => handleChange("categorymaster_fk", value)}
               onProductChange={(value) => handleChange("products_services_fk", value)}
+              onBrandChange={(value) => handleChange("brand_fk", value)}
             />
 
             <TextField

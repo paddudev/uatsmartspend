@@ -63,7 +63,7 @@ export default function CategoryWiseTransactionsReport() {
     }
     setLoading(true);
     setError("");
-    listTransactions({ userid_fk: user.id, from_date: fromDate, to_date: toDate })
+    listTransactions({ userid_fk: user.id, from_date: fromDate, to_date: toDate, source: ["manual", "ai"] })
       .then((data) => {
         const sorted = [...data].sort((a, b) => (a.transaction_date < b.transaction_date ? 1 : -1));
         setItems(sorted);

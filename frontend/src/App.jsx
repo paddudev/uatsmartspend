@@ -32,6 +32,7 @@ import Transactions from "./pages/Transactions";
 import TransactionCreate from "./pages/TransactionCreate";
 import TransactionView from "./pages/TransactionView";
 import TransactionEdit from "./pages/TransactionEdit";
+import BillUpload from "./pages/BillUpload";
 import CategoryWiseTransactionsReport from "./pages/CategoryWiseTransactionsReport";
 import Countries from "./pages/Countries";
 import CountryCreate from "./pages/CountryCreate";
@@ -124,6 +125,10 @@ export default function App() {
             <Route path="transaction/new" element={<TransactionCreate />} />
             <Route path="transaction/:transactionId" element={<TransactionView />} />
             <Route path="transaction/:transactionId/edit" element={<TransactionEdit />} />
+          </Route>
+
+          <Route element={<RequireCapability capability="post_bill" />}>
+            <Route path="transaction/bill-upload" element={<BillUpload />} />
           </Route>
 
           <Route element={<RequireCapability capability="get_reports" />}>

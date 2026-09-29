@@ -9,6 +9,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from passlib.context import CryptContext
 from database import session,engine
 import database_models
+import bill_processing
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
@@ -92,6 +93,14 @@ def resolve_gender_fk(gender_fk: int | None, db: Session):
     if not row or row.tag != "gender":
         raise HTTPException(status_code=400, detail="gender_fk must reference a commonmaster row tagged 'gender'")
     return gender_fk
+
+def resolve_brand_fk(brand_fk: int | None, db: Session):
+    if brand_fk is None:
+        return None
+    row = db.query(database_models.commonmaster).filter(database_models.commonmaster.id == brand_fk).first()
+    if not row or row.tag != "brands":
+        raise HTTPException(status_code=400, detail="brand_fk must reference a commonmaster row tagged 'brands'")
+    return brand_fk
 
 def serialize_user(db_user: database_models.User, db: Session):
     usergroup_description = None
@@ -178,18 +187,100 @@ def serialize_categorymaster(db_categorymaster: database_models.categorymaster, 
         "owner_username": owner.username if owner else None,
     }
 
+def product_category_fks(productsandservices_id: int, db: Session) -> list[int]:
+    links = (
+        db.query(database_models.productsandservices_categories)
+        .filter(database_models.productsandservices_categories.productsandservices_fk == productsandservices_id)
+        .all()
+    )
+    return [link.categorymaster_fk for link in links]
+
+def product_brand_fks(productsandservices_id: int, db: Session) -> list[int]:
+    links = (
+        db.query(database_models.productsandservices_brands)
+        .filter(database_models.productsandservices_brands.productsandservices_fk == productsandservices_id)
+        .all()
+    )
+    return [link.brand_fk for link in links]
+
 def serialize_productsandservices(db_p: database_models.productsandservices, db: Session):
-    category = db.query(database_models.categorymaster).filter(database_models.categorymaster.id == db_p.categorymaster_fk).first()
     owner = db.query(database_models.User).filter(database_models.User.id == db_p.userid_fk).first()
+    category_fks = product_category_fks(db_p.id, db)
+    category_rows = (
+        db.query(database_models.categorymaster)
+        .filter(database_models.categorymaster.id.in_(category_fks))
+        .order_by(database_models.categorymaster.name)
+        .all()
+        if category_fks
+        else []
+    )
+    brand_fks = product_brand_fks(db_p.id, db)
+    brand_rows = (
+        db.query(database_models.commonmaster)
+        .filter(database_models.commonmaster.id.in_(brand_fks))
+        .order_by(database_models.commonmaster.name)
+        .all()
+        if brand_fks
+        else []
+    )
     return {
         "id": db_p.id,
         "name": db_p.name,
         "description": db_p.description,
-        "categorymaster_fk": db_p.categorymaster_fk,
-        "category_name": category.name if category else None,
         "userid_fk": db_p.userid_fk,
         "owner_username": owner.username if owner else None,
+        "categories": [
+            {"id": row.id, "name": row.name, "commonmaster_fk": row.commonmaster_fk}
+            for row in category_rows
+        ],
+        "brands": [{"id": row.id, "name": row.name} for row in brand_rows],
     }
+
+def parse_fk_list(raw: list[str] | None, field_name: str) -> list[int] | None:
+    # A query string can't distinguish "list omitted" (leave links untouched)
+    # from "list explicitly empty" (clear all links), since both look like the
+    # key being absent. The frontend sends a single "" entry to mean
+    # "explicitly empty" -- filter it out before parsing ints.
+    if raw is None:
+        return None
+    values = [v for v in raw if v != ""]
+    try:
+        return [int(v) for v in values]
+    except ValueError:
+        raise HTTPException(status_code=400, detail=f"{field_name} must be a list of integers")
+
+def resolve_categorymaster_fk(categorymaster_fk: int | None, db: Session):
+    if categorymaster_fk is None:
+        return None
+    if not db.query(database_models.categorymaster).filter(database_models.categorymaster.id == categorymaster_fk).first():
+        raise HTTPException(status_code=400, detail="categorymaster_fk does not reference an existing category")
+    return categorymaster_fk
+
+def sync_productsandservices_categories(productsandservices_id: int, categorymaster_fks: list[int], db: Session):
+    if not categorymaster_fks:
+        raise HTTPException(status_code=400, detail="A product/service must belong to at least one category")
+    for categorymaster_fk in categorymaster_fks:
+        resolve_categorymaster_fk(categorymaster_fk, db)
+    db.query(database_models.productsandservices_categories).filter(
+        database_models.productsandservices_categories.productsandservices_fk == productsandservices_id
+    ).delete()
+    for categorymaster_fk in set(categorymaster_fks):
+        db.add(database_models.productsandservices_categories(
+            productsandservices_fk=productsandservices_id,
+            categorymaster_fk=categorymaster_fk,
+        ))
+
+def sync_productsandservices_brands(productsandservices_id: int, brand_fks: list[int], db: Session):
+    for brand_fk in brand_fks:
+        resolve_brand_fk(brand_fk, db)
+    db.query(database_models.productsandservices_brands).filter(
+        database_models.productsandservices_brands.productsandservices_fk == productsandservices_id
+    ).delete()
+    for brand_fk in set(brand_fks):
+        db.add(database_models.productsandservices_brands(
+            productsandservices_fk=productsandservices_id,
+            brand_fk=brand_fk,
+        ))
 
 @app.get("/commonmaster/")
 def read_commonmasters(db: Session = Depends(get_db)):
@@ -280,9 +371,12 @@ def delete_categorymaster(categorymaster_id: int, db: Session = Depends(get_db))
     db_categorymaster = db.query(database_models.categorymaster).filter(database_models.categorymaster.id == categorymaster_id).first()
     if not db_categorymaster:
         return {"message": "Category master not found!"}
-    in_use = db.query(database_models.productsandservices).filter(database_models.productsandservices.categorymaster_fk == categorymaster_id).first()
+    in_use = db.query(database_models.productsandservices_categories).filter(database_models.productsandservices_categories.categorymaster_fk == categorymaster_id).first()
     if in_use:
         raise HTTPException(status_code=400, detail="This category is still used by one or more products/services and can't be deleted")
+    in_use = db.query(database_models.transactions).filter(database_models.transactions.categorymaster_fk == categorymaster_id).first()
+    if in_use:
+        raise HTTPException(status_code=400, detail="This category is still used by one or more transactions and can't be deleted")
     db.delete(db_categorymaster)
     db.commit()
     return {"message": "Category master deleted"}
@@ -299,26 +393,50 @@ def read_productsandservices(productsandservices_id: int, db: Session = Depends(
     return {"message": "Product/service not found!"}
 
 @app.post("/productsandservices/")
-def create_productsandservices(name: str, categorymaster_fk: int, userid_fk: int, description: str = None, db: Session = Depends(get_db)):
-    db_productsandservices = database_models.productsandservices(name=name, categorymaster_fk=categorymaster_fk, description=description, userid_fk=userid_fk)
+def create_productsandservices(
+    name: str,
+    userid_fk: int,
+    description: str = None,
+    categorymaster_fks: list[str] = Query(...),
+    brand_fks: list[str] | None = Query(default=None),
+    db: Session = Depends(get_db),
+):
+    db_productsandservices = database_models.productsandservices(name=name, description=description, userid_fk=userid_fk)
     db.add(db_productsandservices)
+    db.flush()
+    sync_productsandservices_categories(db_productsandservices.id, parse_fk_list(categorymaster_fks, "categorymaster_fks"), db)
+    parsed_brand_fks = parse_fk_list(brand_fks, "brand_fks")
+    if parsed_brand_fks is not None:
+        sync_productsandservices_brands(db_productsandservices.id, parsed_brand_fks, db)
     db.commit()
     db.refresh(db_productsandservices)
     return serialize_productsandservices(db_productsandservices, db)
 
 @app.put("/productsandservices/{productsandservices_id}")
-def update_productsandservices(productsandservices_id: int, name: str = None, categorymaster_fk: int = None, description: str = None, userid_fk: int = None, db: Session = Depends(get_db)):
+def update_productsandservices(
+    productsandservices_id: int,
+    name: str = None,
+    description: str = None,
+    userid_fk: int = None,
+    categorymaster_fks: list[str] | None = Query(default=None),
+    brand_fks: list[str] | None = Query(default=None),
+    db: Session = Depends(get_db),
+):
     db_p = db.query(database_models.productsandservices).filter(database_models.productsandservices.id == productsandservices_id).first()
     if not db_p:
         return {"message": "Product/service not found!"}
     if name is not None:
         db_p.name = name
-    if categorymaster_fk is not None:
-        db_p.categorymaster_fk = categorymaster_fk
     if description is not None:
         db_p.description = description
     if userid_fk is not None:
         db_p.userid_fk = userid_fk
+    parsed_category_fks = parse_fk_list(categorymaster_fks, "categorymaster_fks")
+    if parsed_category_fks is not None:
+        sync_productsandservices_categories(productsandservices_id, parsed_category_fks, db)
+    parsed_brand_fks = parse_fk_list(brand_fks, "brand_fks")
+    if parsed_brand_fks is not None:
+        sync_productsandservices_brands(productsandservices_id, parsed_brand_fks, db)
     db.commit()
     db.refresh(db_p)
     return serialize_productsandservices(db_p, db)
@@ -331,6 +449,12 @@ def delete_productsandservices(productsandservices_id: int, db: Session = Depend
     in_use = db.query(database_models.transactions).filter(database_models.transactions.products_services_fk == productsandservices_id).first()
     if in_use:
         raise HTTPException(status_code=400, detail="This product/service is still used by one or more transactions and can't be deleted")
+    db.query(database_models.productsandservices_brands).filter(
+        database_models.productsandservices_brands.productsandservices_fk == productsandservices_id
+    ).delete()
+    db.query(database_models.productsandservices_categories).filter(
+        database_models.productsandservices_categories.productsandservices_fk == productsandservices_id
+    ).delete()
     db.delete(db_p)
     db.commit()
     return {"message": "Product/service deleted"}
@@ -340,14 +464,36 @@ def resolve_products_services_fk(products_services_fk: int, db: Session):
         raise HTTPException(status_code=400, detail="products_services_fk does not reference an existing product/service")
     return products_services_fk
 
+def resolve_transaction_mapping(products_services_fk: int, categorymaster_fk: int | None, brand_fk: int | None, db: Session):
+    """Check the category and brand are ones the product is mapped to.
+
+    A product can belong to several categories (burger: dine-in, dine-out), so
+    the transaction records which one applies. When the product has exactly
+    one category it's filled in automatically.
+    """
+    category_fks = product_category_fks(products_services_fk, db)
+    if categorymaster_fk is None:
+        if len(category_fks) == 1:
+            categorymaster_fk = category_fks[0]
+        elif len(category_fks) > 1:
+            raise HTTPException(status_code=400, detail="categorymaster_fk is required because this product/service belongs to several categories")
+    elif categorymaster_fk not in category_fks:
+        raise HTTPException(status_code=400, detail="categorymaster_fk is not one of this product/service's categories")
+    if brand_fk is not None and brand_fk not in product_brand_fks(products_services_fk, db):
+        raise HTTPException(status_code=400, detail="brand_fk is not one of this product/service's brands")
+    return categorymaster_fk
+
 def serialize_transaction(db_t: database_models.transactions, db: Session):
     product = db.query(database_models.productsandservices).filter(database_models.productsandservices.id == db_t.products_services_fk).first()
     category = None
     common = None
-    if product:
-        category = db.query(database_models.categorymaster).filter(database_models.categorymaster.id == product.categorymaster_fk).first()
+    if db_t.categorymaster_fk:
+        category = db.query(database_models.categorymaster).filter(database_models.categorymaster.id == db_t.categorymaster_fk).first()
         if category:
             common = db.query(database_models.commonmaster).filter(database_models.commonmaster.id == category.commonmaster_fk).first()
+    brand = None
+    if db_t.brand_fk:
+        brand = db.query(database_models.commonmaster).filter(database_models.commonmaster.id == db_t.brand_fk).first()
     owner = db.query(database_models.User).filter(database_models.User.id == db_t.userid_fk).first()
     return {
         "id": db_t.id,
@@ -360,8 +506,14 @@ def serialize_transaction(db_t: database_models.transactions, db: Session):
         "category_name": category.name if category else None,
         "commonmaster_fk": common.id if common else None,
         "commonmaster_name": common.name if common else None,
+        "brand_fk": db_t.brand_fk,
+        "brand_name": brand.name if brand else None,
         "userid_fk": db_t.userid_fk,
         "owner_username": owner.username if owner else None,
+        "source": db_t.source,
+        "bill_upload_fk": db_t.bill_upload_fk,
+        "raw_item_text": db_t.raw_item_text,
+        "classification_confidence": db_t.classification_confidence,
     }
 
 @app.get("/transactions/")
@@ -369,6 +521,10 @@ def read_transactions(
     userid_fk: int | None = None,
     from_date: str | None = None,
     to_date: str | None = None,
+    source: list[str] | None = Query(default=None),
+    missing_brand: bool | None = None,
+    limit: int | None = None,
+    offset: int = 0,
     db: Session = Depends(get_db),
 ):
     if (from_date is None) != (to_date is None):
@@ -391,6 +547,18 @@ def read_transactions(
         query = query.filter(database_models.transactions.transaction_date >= from_date)
     if to_date is not None:
         query = query.filter(database_models.transactions.transaction_date <= to_date)
+    if source is not None:
+        query = query.filter(database_models.transactions.source.in_(source))
+    if missing_brand:
+        query = query.filter(database_models.transactions.brand_fk.is_(None))
+    query = query.order_by(
+        database_models.transactions.transaction_date.desc(),
+        database_models.transactions.id.desc(),
+    )
+    if offset:
+        query = query.offset(offset)
+    if limit is not None:
+        query = query.limit(limit)
     return [serialize_transaction(t, db) for t in query.all()]
 
 @app.get("/transactions/{transaction_id}")
@@ -401,26 +569,64 @@ def read_transaction(transaction_id: int, db: Session = Depends(get_db)):
     return {"message": "Transaction not found!"}
 
 @app.post("/transactions/")
-def create_transactions(amount: float, products_services_fk: int, transaction_date: str, userid_fk: int, note: str = None, db: Session = Depends(get_db)):
+def create_transactions(amount: float, products_services_fk: int, transaction_date: str, userid_fk: int, note: str = None, categorymaster_fk: int | None = None, brand_fk: int | None = None, db: Session = Depends(get_db)):
     products_services_fk = resolve_products_services_fk(products_services_fk, db)
     transaction_date = resolve_transaction_date(transaction_date)
+    brand_fk = resolve_brand_fk(brand_fk, db)
+    categorymaster_fk = resolve_transaction_mapping(products_services_fk, resolve_categorymaster_fk(categorymaster_fk, db), brand_fk, db)
     if not db.query(database_models.User).filter(database_models.User.id == userid_fk).first():
         raise HTTPException(status_code=400, detail="userid_fk does not reference an existing user")
-    db_transactions = database_models.transactions(amount=amount, products_services_fk=products_services_fk, transaction_date=transaction_date, userid_fk=userid_fk, note=note)
+    db_transactions = database_models.transactions(amount=amount, products_services_fk=products_services_fk, categorymaster_fk=categorymaster_fk, brand_fk=brand_fk, transaction_date=transaction_date, userid_fk=userid_fk, note=note)
     db.add(db_transactions)
     db.commit()
     db.refresh(db_transactions)
     return serialize_transaction(db_transactions, db)
 
 @app.put("/transactions/{transaction_id}")
-def update_transaction(transaction_id: int, amount: float = None, products_services_fk: int = None, transaction_date: str = None, userid_fk: int = None, note: str = None, db: Session = Depends(get_db)):
+def update_transaction(transaction_id: int, amount: float = None, products_services_fk: int = None, transaction_date: str = None, userid_fk: int = None, note: str = None, categorymaster_fk: int | None = None, brand_fk: str | None = None, db: Session = Depends(get_db)):
     db_transactions = db.query(database_models.transactions).filter(database_models.transactions.id == transaction_id).first()
     if not db_transactions:
         return {"message": "Transaction not found!"}
     if amount is not None:
         db_transactions.amount = amount
+    # brand_fk arrives as a raw string so "" (explicitly clear the brand) can
+    # be told apart from omitted (leave the existing brand untouched).
+    if brand_fk is not None:
+        if brand_fk == "":
+            db_transactions.brand_fk = None
+        else:
+            try:
+                parsed_brand_fk = int(brand_fk)
+            except ValueError:
+                raise HTTPException(status_code=400, detail="brand_fk must be an integer")
+            db_transactions.brand_fk = resolve_brand_fk(parsed_brand_fk, db)
     if products_services_fk is not None:
         db_transactions.products_services_fk = resolve_products_services_fk(products_services_fk, db)
+        if categorymaster_fk is None:
+            # The old category may not belong to the new product; let
+            # resolve_transaction_mapping pick it again (or demand one).
+            db_transactions.categorymaster_fk = None
+    if categorymaster_fk is not None:
+        db_transactions.categorymaster_fk = resolve_categorymaster_fk(categorymaster_fk, db)
+    mapping_changed = products_services_fk is not None or categorymaster_fk is not None or brand_fk is not None
+    if mapping_changed and db_transactions.products_services_fk is not None:
+        db_transactions.categorymaster_fk = resolve_transaction_mapping(
+            db_transactions.products_services_fk,
+            db_transactions.categorymaster_fk,
+            db_transactions.brand_fk,
+            db,
+        )
+    if products_services_fk is not None:
+        if db_transactions.source == "draft":
+            db_transactions.source = "manual"
+            if db_transactions.raw_item_text:
+                db.add(database_models.bill_item_aliases(
+                    productsandservices_fk=products_services_fk,
+                    categorymaster_fk=db_transactions.categorymaster_fk,
+                    brand_fk=db_transactions.brand_fk,
+                    userid_fk=db_transactions.userid_fk,
+                    alias_text=db_transactions.raw_item_text,
+                ))
     if transaction_date is not None:
         db_transactions.transaction_date = resolve_transaction_date(transaction_date)
     if userid_fk is not None:
@@ -441,6 +647,96 @@ def delete_transaction(transaction_id: int, db: Session = Depends(get_db)):
     db.delete(db_transactions)
     db.commit()
     return {"message": "Transaction deleted"}
+
+ALLOWED_BILL_FILE_TYPES = ("image/jpeg", "image/jpg", "image/png", "application/pdf")
+MAX_BILL_FILE_BYTES = 10 * 1024 * 1024
+
+def serialize_bill_upload(db_bill: database_models.bill_uploads, db: Session):
+    transactions = (
+        db.query(database_models.transactions)
+        .filter(database_models.transactions.bill_upload_fk == db_bill.id)
+        .all()
+    )
+    return {
+        "id": db_bill.id,
+        "userid_fk": db_bill.userid_fk,
+        "file_data": db_bill.file_data,
+        "file_type": db_bill.file_type,
+        "uploaded_at": db_bill.uploaded_at.isoformat() if db_bill.uploaded_at else None,
+        "status": db_bill.status,
+        "error_message": db_bill.error_message,
+        "transactions": [serialize_transaction(t, db) for t in transactions],
+    }
+
+@app.post("/bills/upload")
+def upload_bill(
+    file_data: str = Body(...),
+    file_type: str = Body(...),
+    userid_fk: int = Body(...),
+    db: Session = Depends(get_db),
+):
+    if file_type not in ALLOWED_BILL_FILE_TYPES:
+        raise HTTPException(status_code=400, detail=f"file_type must be one of {ALLOWED_BILL_FILE_TYPES}")
+    if not db.query(database_models.User).filter(database_models.User.id == userid_fk).first():
+        raise HTTPException(status_code=400, detail="userid_fk does not reference an existing user")
+    try:
+        decoded_size = len(base64.b64decode(file_data, validate=True))
+    except Exception:
+        raise HTTPException(status_code=400, detail="file_data must be valid base64")
+    if decoded_size > MAX_BILL_FILE_BYTES:
+        raise HTTPException(status_code=400, detail="Bill file exceeds the 10MB size limit")
+
+    db_bill = database_models.bill_uploads(
+        userid_fk=userid_fk,
+        file_data=file_data,
+        file_type=file_type,
+        status="processing",
+    )
+    db.add(db_bill)
+    db.commit()
+    db.refresh(db_bill)
+
+    try:
+        result = bill_processing.process_bill(file_data, file_type, userid_fk, db)
+    except Exception as exc:
+        db_bill.status = "failed"
+        db_bill.error_message = str(exc)
+        db.commit()
+        raise HTTPException(status_code=422, detail=f"Unable to process bill: {exc}")
+
+    db_bill.raw_ocr_text = result["raw_ocr_text"]
+    db_bill.status = "processed"
+
+    for item in result["line_items"]:
+        db.add(database_models.transactions(
+            amount=item["amount"],
+            products_services_fk=item["products_services_fk"],
+            categorymaster_fk=item.get("categorymaster_fk"),
+            brand_fk=item.get("brand_fk"),
+            transaction_date=result["transaction_date"],
+            userid_fk=userid_fk,
+            source=item["source"],
+            bill_upload_fk=db_bill.id,
+            raw_item_text=item["raw_item_text"],
+            classification_confidence=item["classification_confidence"],
+        ))
+    db.commit()
+    db.refresh(db_bill)
+    return serialize_bill_upload(db_bill, db)
+
+@app.get("/bills/")
+def read_bills(userid_fk: int | None = None, db: Session = Depends(get_db)):
+    query = db.query(database_models.bill_uploads)
+    if userid_fk is not None:
+        query = query.filter(database_models.bill_uploads.userid_fk == userid_fk)
+    return [serialize_bill_upload(b, db) for b in query.order_by(database_models.bill_uploads.uploaded_at.desc()).all()]
+
+@app.get("/bills/{bill_id}")
+def read_bill(bill_id: int, db: Session = Depends(get_db)):
+    db_bill = db.query(database_models.bill_uploads).filter(database_models.bill_uploads.id == bill_id).first()
+    if not db_bill:
+        return {"message": "Bill upload not found!"}
+    return serialize_bill_upload(db_bill, db)
 
 @app.post("/login")
 def login(username: str, password: str, db: Session = Depends(get_db)):

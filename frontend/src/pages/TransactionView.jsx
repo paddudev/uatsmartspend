@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { Alert, Box, Button, Chip, Paper, Stack, Typography } from "@mui/material";
 import { getTransaction } from "../api/transactions";
+import { getBill } from "../api/bills";
 
 function Field({ label, value }) {
   return (
@@ -18,11 +19,17 @@ export default function TransactionView() {
   const { transactionId } = useParams();
   const navigate = useNavigate();
   const [item, setItem] = useState(null);
+  const [bill, setBill] = useState(null);
   const [error, setError] = useState("");
 
   useEffect(() => {
     getTransaction(transactionId)
-      .then(setItem)
+      .then((t) => {
+        setItem(t);
+        if (t.bill_upload_fk) {
+          getBill(t.bill_upload_fk).then(setBill).catch(() => {});
+        }
+      })
       .catch(() => setError("Unable to load transaction."));
   }, [transactionId]);
 
@@ -62,7 +69,32 @@ export default function TransactionView() {
             </Box>
             <Field label="Category" value={item.category_name || "—"} />
             <Field label="Product/Service" value={item.product_name || "—"} />
+            <Field label="Brand" value={item.brand_name || "—"} />
             <Field label="Note" value={item.note || "—"} />
+            <Box>
+              <Typography variant="caption" color="text.secondary" display="block">
+                Source
+              </Typography>
+              <Chip
+                label={item.source === "ai" ? "AI classified" : item.source === "draft" ? "Draft" : "Manual"}
+                size="small"
+                color={item.source === "ai" ? "success" : item.source === "draft" ? "warning" : "default"}
+              />
+            </Box>
+            {item.raw_item_text && <Field label="Original bill text" value={item.raw_item_text} />}
+            {bill?.file_data && bill.file_type?.startsWith("image/") && (
+              <Box sx={{ gridColumn: "1 / -1" }}>
+                <Typography variant="caption" color="text.secondary" display="block" gutterBottom>
+                  Bill image
+                </Typography>
+                <Box
+                  component="img"
+                  src={`data:${bill.file_type};base64,${bill.file_data}`}
+                  alt="Bill"
+                  sx={{ maxWidth: 300, maxHeight: 300, objectFit: "contain", border: 1, borderColor: "divider" }}
+                />
+              </Box>
+            )}
             <Stack direction="row" spacing={2} sx={{ gridColumn: "1 / -1", pt: 1 }}>
               <Button variant="contained" onClick={() => navigate(`/app/transaction/${transactionId}/edit`)}>
                 Edit

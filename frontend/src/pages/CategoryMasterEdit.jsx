@@ -11,30 +11,28 @@ import {
   Typography,
 } from "@mui/material";
 import { getCategoryMaster, listCommonMasters, updateCategoryMaster } from "../api/masters";
-import { listUsers } from "../api/users";
+import { useAuth } from "../auth/AuthContext";
 import { useNotification } from "../notifications/NotificationContext";
 
 export default function CategoryMasterEdit() {
   const { categoryMasterId } = useParams();
   const navigate = useNavigate();
+  const { user } = useAuth();
   const { notifySuccess } = useNotification();
   const [form, setForm] = useState(null);
-  const [users, setUsers] = useState([]);
   const [commonMasters, setCommonMasters] = useState([]);
   const [error, setError] = useState("");
   const [submitting, setSubmitting] = useState(false);
 
   useEffect(() => {
-    Promise.all([getCategoryMaster(categoryMasterId), listUsers(), listCommonMasters()])
-      .then(([item, allUsers, commons]) => {
+    Promise.all([getCategoryMaster(categoryMasterId), listCommonMasters()])
+      .then(([item, commons]) => {
         setForm({
           name: item.name,
           commonmaster_fk: item.commonmaster_fk,
           tag: item.tag || "",
-          userid_fk: item.userid_fk,
         });
-        setUsers(allUsers);
-        setCommonMasters(commons);
+        setCommonMasters(commons.filter((c) => c.tag === "transaction type"));
       })
       .catch(() => setError("Unable to load category master."));
   }, [categoryMasterId]);
@@ -52,7 +50,7 @@ export default function CategoryMasterEdit() {
         name: form.name,
         commonmaster_fk: form.commonmaster_fk,
         tag: form.tag,
-        userid_fk: form.userid_fk,
+        userid_fk: user.id,
       });
       notifySuccess("Category master updated successfully.");
       navigate(`/app/master/category/${categoryMasterId}`);
@@ -114,20 +112,6 @@ export default function CategoryMasterEdit() {
               onChange={(e) => handleChange("tag", e.target.value)}
               fullWidth
             />
-            <TextField
-              select
-              label="Owner"
-              value={form.userid_fk}
-              onChange={(e) => handleChange("userid_fk", e.target.value)}
-              required
-              fullWidth
-            >
-              {users.map((u) => (
-                <MenuItem key={u.id} value={u.id}>
-                  {u.full_name || u.username}
-                </MenuItem>
-              ))}
-            </TextField>
 
             <Stack direction="row" spacing={2} sx={{ gridColumn: "1 / -1" }}>
               <Button type="submit" variant="contained" disabled={submitting}>

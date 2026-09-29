@@ -4,6 +4,10 @@ function buildQuery(fields) {
   const params = new URLSearchParams();
   Object.entries(fields).forEach(([key, value]) => {
     if (value === undefined || value === null) return;
+    if (Array.isArray(value)) {
+      value.forEach((item) => params.append(key, item));
+      return;
+    }
     params.append(key, value);
   });
   return params.toString();
