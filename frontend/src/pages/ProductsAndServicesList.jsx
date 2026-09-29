@@ -7,6 +7,7 @@ import {
   Button,
   Chip,
   IconButton,
+  InputAdornment,
   Paper,
   Stack,
   Table,
@@ -23,6 +24,7 @@ import AddIcon from "@mui/icons-material/Add";
 import VisibilityIcon from "@mui/icons-material/Visibility";
 import EditIcon from "@mui/icons-material/Edit";
 import DeleteIcon from "@mui/icons-material/Delete";
+import SearchIcon from "@mui/icons-material/Search";
 import { deleteProductsAndServices, listProductsAndServices } from "../api/masters";
 import ConfirmDialog from "../components/ConfirmDialog";
 
@@ -44,17 +46,23 @@ export default function ProductsAndServicesList() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [pendingDelete, setPendingDelete] = useState(null);
+  const [nameSearch, setNameSearch] = useState("");
   const [categoryFilter, setCategoryFilter] = useState([]);
   const [brandFilter, setBrandFilter] = useState([]);
 
   const categoryOptions = useMemo(() => collectOptions(items, "categories"), [items]);
   const brandOptions = useMemo(() => collectOptions(items, "brands"), [items]);
+  const searchText = nameSearch.trim().toLowerCase();
   const filteredItems = items.filter(
-    (item) => matchesAny(item.categories, categoryFilter) && matchesAny(item.brands, brandFilter)
+    (item) =>
+      item.name.toLowerCase().includes(searchText) &&
+      matchesAny(item.categories, categoryFilter) &&
+      matchesAny(item.brands, brandFilter)
   );
-  const filtersActive = categoryFilter.length > 0 || brandFilter.length > 0;
+  const filtersActive = searchText !== "" || categoryFilter.length > 0 || brandFilter.length > 0;
 
   function clearFilters() {
+    setNameSearch("");
     setCategoryFilter([]);
     setBrandFilter([]);
   }
@@ -104,6 +112,23 @@ export default function ProductsAndServicesList() {
 
       <Paper sx={{ p: 2.5, mb: 2 }}>
         <Stack direction="row" spacing={2} sx={{ flexWrap: "wrap", alignItems: "center", rowGap: 2 }}>
+          <TextField
+            size="small"
+            label="Name"
+            placeholder="Search by name"
+            value={nameSearch}
+            onChange={(e) => setNameSearch(e.target.value)}
+            slotProps={{
+              input: {
+                startAdornment: (
+                  <InputAdornment position="start">
+                    <SearchIcon fontSize="small" />
+                  </InputAdornment>
+                ),
+              },
+            }}
+            sx={{ minWidth: 220, flex: 1 }}
+          />
           <Autocomplete
             multiple
             size="small"
