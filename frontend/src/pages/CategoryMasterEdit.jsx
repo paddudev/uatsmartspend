@@ -11,13 +11,11 @@ import {
   Typography,
 } from "@mui/material";
 import { getCategoryMaster, listCommonMasters, updateCategoryMaster } from "../api/masters";
-import { useAuth } from "../auth/AuthContext";
 import { useNotification } from "../notifications/NotificationContext";
 
 export default function CategoryMasterEdit() {
   const { categoryMasterId } = useParams();
   const navigate = useNavigate();
-  const { user } = useAuth();
   const { notifySuccess } = useNotification();
   const [form, setForm] = useState(null);
   const [commonMasters, setCommonMasters] = useState([]);
@@ -50,7 +48,6 @@ export default function CategoryMasterEdit() {
         name: form.name,
         commonmaster_fk: form.commonmaster_fk,
         tag: form.tag,
-        userid_fk: user.id,
       });
       notifySuccess("Category master updated successfully.");
       navigate(`/app/master/category/${categoryMasterId}`);

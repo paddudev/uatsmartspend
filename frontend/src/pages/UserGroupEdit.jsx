@@ -10,14 +10,12 @@ import {
   Typography,
 } from "@mui/material";
 import { getUsergroup, updateUsergroup } from "../api/usergroups";
-import { useAuth } from "../auth/AuthContext";
 import CapabilitySelect from "../components/CapabilitySelect";
 import { useNotification } from "../notifications/NotificationContext";
 
 export default function UserGroupEdit() {
   const { groupId } = useParams();
   const navigate = useNavigate();
-  const { user } = useAuth();
   const { notifySuccess } = useNotification();
   const [form, setForm] = useState(null);
   const [error, setError] = useState("");
@@ -49,7 +47,6 @@ export default function UserGroupEdit() {
         name: form.name,
         description: form.description,
         tag: form.tag,
-        userid_fk: user.id,
         capability_ids: form.capability_ids,
       });
       notifySuccess("User group updated successfully.");

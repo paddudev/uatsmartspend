@@ -10,13 +10,11 @@ import {
   Typography,
 } from "@mui/material";
 import { getCommonMaster, updateCommonMaster } from "../api/masters";
-import { useAuth } from "../auth/AuthContext";
 import { useNotification } from "../notifications/NotificationContext";
 
 export default function CommonMasterEdit() {
   const { commonMasterId } = useParams();
   const navigate = useNavigate();
-  const { user } = useAuth();
   const { notifySuccess } = useNotification();
   const [form, setForm] = useState(null);
   const [error, setError] = useState("");
@@ -47,7 +45,6 @@ export default function CommonMasterEdit() {
         name: form.name,
         description: form.description,
         tag: form.tag,
-        userid_fk: user.id,
       });
       notifySuccess("Common master updated successfully.");
       navigate(`/app/master/common/${commonMasterId}`);

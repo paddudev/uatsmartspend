@@ -11,13 +11,11 @@ import {
   Typography,
 } from "@mui/material";
 import { getProductsAndServices, listCategoryMasters, listCommonMasters, updateProductsAndServices } from "../api/masters";
-import { useAuth } from "../auth/AuthContext";
 import { useNotification } from "../notifications/NotificationContext";
 
 export default function ProductsAndServicesEdit() {
   const { productId } = useParams();
   const navigate = useNavigate();
-  const { user } = useAuth();
   const { notifySuccess } = useNotification();
   const [form, setForm] = useState(null);
   const [categories, setCategories] = useState([]);
@@ -57,7 +55,6 @@ export default function ProductsAndServicesEdit() {
         name: form.name,
         description: form.description,
         categorymaster_fks: form.categorymaster_fks,
-        userid_fk: user.id,
         brand_fks: form.brand_fks.length ? form.brand_fks : [""],
       });
       notifySuccess("Product/service updated successfully.");
