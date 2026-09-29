@@ -10,6 +10,7 @@ from passlib.context import CryptContext
 from database import session,engine
 import database_models
 import bill_processing
+from sqlalchemy import func
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
@@ -256,6 +257,23 @@ def resolve_categorymaster_fk(categorymaster_fk: int | None, db: Session):
         raise HTTPException(status_code=400, detail="categorymaster_fk does not reference an existing category")
     return categorymaster_fk
 
+PRODUCT_NAME_TAKEN = "A product/service with this name already exists"
+
+def resolve_productsandservices_name(name: str, db: Session, exclude_id: int | None = None):
+    # Names are unique regardless of case ("Burger" and "burger" are the same
+    # product), matching the uq_productsandservices_name_lower index.
+    name = (name or "").strip()
+    if not name:
+        raise HTTPException(status_code=400, detail="name is required")
+    query = db.query(database_models.productsandservices).filter(
+        func.lower(database_models.productsandservices.name) == name.lower()
+    )
+    if exclude_id is not None:
+        query = query.filter(database_models.productsandservices.id != exclude_id)
+    if query.first():
+        raise HTTPException(status_code=400, detail=PRODUCT_NAME_TAKEN)
+    return name
+
 def sync_productsandservices_categories(productsandservices_id: int, categorymaster_fks: list[int], db: Session):
     if not categorymaster_fks:
         raise HTTPException(status_code=400, detail="A product/service must belong to at least one category")
@@ -401,6 +419,7 @@ def create_productsandservices(
     brand_fks: list[str] | None = Query(default=None),
     db: Session = Depends(get_db),
 ):
+    name = resolve_productsandservices_name(name, db)
     db_productsandservices = database_models.productsandservices(name=name, description=description, userid_fk=userid_fk)
     db.add(db_productsandservices)
     db.flush()
@@ -408,7 +427,7 @@ def create_productsandservices(
     parsed_brand_fks = parse_fk_list(brand_fks, "brand_fks")
     if parsed_brand_fks is not None:
         sync_productsandservices_brands(db_productsandservices.id, parsed_brand_fks, db)
-    db.commit()
+    commit_or_conflict(db, PRODUCT_NAME_TAKEN)
     db.refresh(db_productsandservices)
     return serialize_productsandservices(db_productsandservices, db)
 
@@ -426,7 +445,7 @@ def update_productsandservices(
     if not db_p:
         return {"message": "Product/service not found!"}
     if name is not None:
-        db_p.name = name
+        db_p.name = resolve_productsandservices_name(name, db, exclude_id=productsandservices_id)
     if description is not None:
         db_p.description = description
     if userid_fk is not None:
@@ -437,7 +456,7 @@ def update_productsandservices(
     parsed_brand_fks = parse_fk_list(brand_fks, "brand_fks")
     if parsed_brand_fks is not None:
         sync_productsandservices_brands(productsandservices_id, parsed_brand_fks, db)
-    db.commit()
+    commit_or_conflict(db, PRODUCT_NAME_TAKEN)
     db.refresh(db_p)
     return serialize_productsandservices(db_p, db)
 

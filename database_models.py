@@ -1,6 +1,6 @@
 import enum
 
-from sqlalchemy import Column, Integer, String, Float, ForeignKey, Text, DateTime, UniqueConstraint
+from sqlalchemy import Column, Integer, String, Float, ForeignKey, Text, DateTime, UniqueConstraint, Index
 from sqlalchemy.sql import func
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.dialects.postgresql import JSONB
@@ -77,6 +77,8 @@ class productsandservices(Base):
     name = Column(String, unique = True, index=True, nullable=False)
     description = Column(String)
     userid_fk = Column(Integer, nullable=False)
+
+    __table_args__ = (Index("uq_productsandservices_name_lower", func.lower(name), unique=True),)
 
 class productsandservices_categories(Base):
     __tablename__ = "productsandservices_categories"

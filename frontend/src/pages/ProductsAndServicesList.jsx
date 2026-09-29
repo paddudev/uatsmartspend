@@ -1,7 +1,8 @@
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import {
   Alert,
+  Autocomplete,
   Box,
   Button,
   Chip,
@@ -14,6 +15,7 @@ import {
   TableContainer,
   TableHead,
   TableRow,
+  TextField,
   Tooltip,
   Typography,
 } from "@mui/material";
@@ -24,12 +26,38 @@ import DeleteIcon from "@mui/icons-material/Delete";
 import { deleteProductsAndServices, listProductsAndServices } from "../api/masters";
 import ConfirmDialog from "../components/ConfirmDialog";
 
+// Distinct {id, name} options across every product's categories or brands.
+function collectOptions(items, key) {
+  const byId = new Map();
+  items.forEach((item) => (item[key] || []).forEach((option) => byId.set(option.id, option)));
+  return [...byId.values()].sort((a, b) => a.name.localeCompare(b.name));
+}
+
+// Several selections within one filter match any of them; an empty filter matches all.
+function matchesAny(links, selected) {
+  return selected.length === 0 || (links || []).some((link) => selected.some((s) => s.id === link.id));
+}
+
 export default function ProductsAndServicesList() {
   const navigate = useNavigate();
   const [items, setItems] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [pendingDelete, setPendingDelete] = useState(null);
+  const [categoryFilter, setCategoryFilter] = useState([]);
+  const [brandFilter, setBrandFilter] = useState([]);
+
+  const categoryOptions = useMemo(() => collectOptions(items, "categories"), [items]);
+  const brandOptions = useMemo(() => collectOptions(items, "brands"), [items]);
+  const filteredItems = items.filter(
+    (item) => matchesAny(item.categories, categoryFilter) && matchesAny(item.brands, brandFilter)
+  );
+  const filtersActive = categoryFilter.length > 0 || brandFilter.length > 0;
+
+  function clearFilters() {
+    setCategoryFilter([]);
+    setBrandFilter([]);
+  }
 
   async function loadItems() {
     setLoading(true);
@@ -74,6 +102,37 @@ export default function ProductsAndServicesList() {
         </Alert>
       )}
 
+      <Paper sx={{ p: 2.5, mb: 2 }}>
+        <Stack direction="row" spacing={2} sx={{ flexWrap: "wrap", alignItems: "center", rowGap: 2 }}>
+          <Autocomplete
+            multiple
+            size="small"
+            options={categoryOptions}
+            getOptionLabel={(option) => option.name}
+            isOptionEqualToValue={(option, value) => option.id === value.id}
+            value={categoryFilter}
+            onChange={(e, newValue) => setCategoryFilter(newValue)}
+            renderInput={(params) => <TextField {...params} label="Category" placeholder="All categories" />}
+            sx={{ minWidth: 260, flex: 1 }}
+          />
+          <Autocomplete
+            multiple
+            size="small"
+            options={brandOptions}
+            getOptionLabel={(option) => option.name}
+            isOptionEqualToValue={(option, value) => option.id === value.id}
+            value={brandFilter}
+            onChange={(e, newValue) => setBrandFilter(newValue)}
+            renderInput={(params) => <TextField {...params} label="Brand" placeholder="All brands" />}
+            sx={{ minWidth: 260, flex: 1 }}
+          />
+          {filtersActive && <Button onClick={clearFilters}>Clear filter</Button>}
+          <Typography variant="body2" color="text.secondary">
+            {filtersActive ? `${filteredItems.length} of ${items.length}` : `${items.length}`} products/services
+          </Typography>
+        </Stack>
+      </Paper>
+
       <TableContainer component={Paper}>
         <Table>
           <TableHead>
@@ -87,14 +146,14 @@ export default function ProductsAndServicesList() {
             </TableRow>
           </TableHead>
           <TableBody>
-            {!loading && items.length === 0 && (
+            {!loading && filteredItems.length === 0 && (
               <TableRow>
                 <TableCell colSpan={6} align="center">
-                  No products or services found.
+                  {filtersActive ? "No products or services match these filters." : "No products or services found."}
                 </TableCell>
               </TableRow>
             )}
-            {items.map((item) => (
+            {filteredItems.map((item) => (
               <TableRow
                 key={item.id}
                 hover
