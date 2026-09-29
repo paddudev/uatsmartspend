@@ -1,34 +1,27 @@
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import {
   Alert,
   Box,
   Button,
-  MenuItem,
   Paper,
   Stack,
   TextField,
   Typography,
 } from "@mui/material";
 import { createCommonMaster } from "../api/masters";
-import { listUsers } from "../api/users";
+import { useAuth } from "../auth/AuthContext";
 import { useNotification } from "../notifications/NotificationContext";
 
-const emptyForm = { name: "", description: "", tag: "", userid_fk: "" };
+const emptyForm = { name: "", description: "", tag: "" };
 
 export default function CommonMasterCreate() {
   const navigate = useNavigate();
+  const { user } = useAuth();
   const { notifySuccess } = useNotification();
   const [form, setForm] = useState(emptyForm);
-  const [users, setUsers] = useState([]);
   const [error, setError] = useState("");
   const [submitting, setSubmitting] = useState(false);
-
-  useEffect(() => {
-    listUsers()
-      .then(setUsers)
-      .catch(() => setError("Unable to load users."));
-  }, []);
 
   function handleChange(field, value) {
     setForm((f) => ({ ...f, [field]: value }));
@@ -43,7 +36,7 @@ export default function CommonMasterCreate() {
         name: form.name,
         description: form.description,
         tag: form.tag,
-        userid_fk: form.userid_fk,
+        userid_fk: user.id,
       });
       notifySuccess("Common master created successfully.");
       navigate("/app/master/common");
@@ -93,20 +86,6 @@ export default function CommonMasterCreate() {
               onChange={(e) => handleChange("tag", e.target.value)}
               fullWidth
             />
-            <TextField
-              select
-              label="Owner"
-              value={form.userid_fk}
-              onChange={(e) => handleChange("userid_fk", e.target.value)}
-              required
-              fullWidth
-            >
-              {users.map((u) => (
-                <MenuItem key={u.id} value={u.id}>
-                  {u.full_name || u.username}
-                </MenuItem>
-              ))}
-            </TextField>
 
             <Stack direction="row" spacing={2} sx={{ gridColumn: "1 / -1" }}>
               <Button type="submit" variant="contained" disabled={submitting}>

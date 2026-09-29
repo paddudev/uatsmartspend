@@ -5,38 +5,35 @@ import {
   Autocomplete,
   Box,
   Button,
-  MenuItem,
   Paper,
   Stack,
   TextField,
   Typography,
 } from "@mui/material";
 import { getProductsAndServices, listCategoryMasters, listCommonMasters, updateProductsAndServices } from "../api/masters";
-import { listUsers } from "../api/users";
+import { useAuth } from "../auth/AuthContext";
 import { useNotification } from "../notifications/NotificationContext";
 
 export default function ProductsAndServicesEdit() {
   const { productId } = useParams();
   const navigate = useNavigate();
+  const { user } = useAuth();
   const { notifySuccess } = useNotification();
   const [form, setForm] = useState(null);
-  const [users, setUsers] = useState([]);
   const [categories, setCategories] = useState([]);
   const [brands, setBrands] = useState([]);
   const [error, setError] = useState("");
   const [submitting, setSubmitting] = useState(false);
 
   useEffect(() => {
-    Promise.all([getProductsAndServices(productId), listUsers(), listCategoryMasters(), listCommonMasters()])
-      .then(([item, allUsers, allCategories, allCommonMasters]) => {
+    Promise.all([getProductsAndServices(productId), listCategoryMasters(), listCommonMasters()])
+      .then(([item, allCategories, allCommonMasters]) => {
         setForm({
           name: item.name,
           description: item.description || "",
           categorymaster_fks: (item.categories || []).map((c) => c.id),
-          userid_fk: item.userid_fk,
           brand_fks: (item.brands || []).map((b) => b.id),
         });
-        setUsers(allUsers);
         setCategories(allCategories);
         setBrands(allCommonMasters.filter((c) => c.tag === "brands"));
       })
@@ -60,7 +57,7 @@ export default function ProductsAndServicesEdit() {
         name: form.name,
         description: form.description,
         categorymaster_fks: form.categorymaster_fks,
-        userid_fk: form.userid_fk,
+        userid_fk: user.id,
         brand_fks: form.brand_fks.length ? form.brand_fks : [""],
       });
       notifySuccess("Product/service updated successfully.");
@@ -109,20 +106,6 @@ export default function ProductsAndServicesEdit() {
               onChange={(e) => handleChange("description", e.target.value)}
               fullWidth
             />
-            <TextField
-              select
-              label="Owner"
-              value={form.userid_fk}
-              onChange={(e) => handleChange("userid_fk", e.target.value)}
-              required
-              fullWidth
-            >
-              {users.map((u) => (
-                <MenuItem key={u.id} value={u.id}>
-                  {u.full_name || u.username}
-                </MenuItem>
-              ))}
-            </TextField>
             <Autocomplete
               multiple
               options={categories}

@@ -4,37 +4,34 @@ import {
   Alert,
   Box,
   Button,
-  MenuItem,
   Paper,
   Stack,
   TextField,
   Typography,
 } from "@mui/material";
 import { getUsergroup, updateUsergroup } from "../api/usergroups";
-import { listUsers } from "../api/users";
+import { useAuth } from "../auth/AuthContext";
 import CapabilitySelect from "../components/CapabilitySelect";
 import { useNotification } from "../notifications/NotificationContext";
 
 export default function UserGroupEdit() {
   const { groupId } = useParams();
   const navigate = useNavigate();
+  const { user } = useAuth();
   const { notifySuccess } = useNotification();
   const [form, setForm] = useState(null);
-  const [users, setUsers] = useState([]);
   const [error, setError] = useState("");
   const [submitting, setSubmitting] = useState(false);
 
   useEffect(() => {
-    Promise.all([getUsergroup(groupId), listUsers()])
-      .then(([g, allUsers]) => {
+    getUsergroup(groupId)
+      .then((g) => {
         setForm({
           name: g.name,
           description: g.description || "",
           tag: g.tag || "",
-          userid_fk: g.userid_fk,
           capability_ids: g.capability_ids || [],
         });
-        setUsers(allUsers);
       })
       .catch(() => setError("Unable to load user group."));
   }, [groupId]);
@@ -52,7 +49,7 @@ export default function UserGroupEdit() {
         name: form.name,
         description: form.description,
         tag: form.tag,
-        userid_fk: form.userid_fk,
+        userid_fk: user.id,
         capability_ids: form.capability_ids,
       });
       notifySuccess("User group updated successfully.");
@@ -107,20 +104,6 @@ export default function UserGroupEdit() {
               onChange={(e) => handleChange("tag", e.target.value)}
               fullWidth
             />
-            <TextField
-              select
-              label="Owner"
-              value={form.userid_fk}
-              onChange={(e) => handleChange("userid_fk", e.target.value)}
-              required
-              fullWidth
-            >
-              {users.map((u) => (
-                <MenuItem key={u.id} value={u.id}>
-                  {u.full_name || u.username}
-                </MenuItem>
-              ))}
-            </TextField>
 
             <Box sx={{ gridColumn: "1 / -1" }}>
               <CapabilitySelect

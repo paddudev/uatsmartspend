@@ -1,17 +1,16 @@
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import {
   Alert,
   Box,
   Button,
-  MenuItem,
   Paper,
   Stack,
   TextField,
   Typography,
 } from "@mui/material";
 import { createUsergroup } from "../api/usergroups";
-import { listUsers } from "../api/users";
+import { useAuth } from "../auth/AuthContext";
 import CapabilitySelect from "../components/CapabilitySelect";
 import { useNotification } from "../notifications/NotificationContext";
 
@@ -19,23 +18,16 @@ const emptyForm = {
   name: "",
   description: "",
   tag: "",
-  userid_fk: "",
   capability_ids: [],
 };
 
 export default function UserGroupCreate() {
   const navigate = useNavigate();
+  const { user } = useAuth();
   const { notifySuccess } = useNotification();
   const [form, setForm] = useState(emptyForm);
-  const [users, setUsers] = useState([]);
   const [error, setError] = useState("");
   const [submitting, setSubmitting] = useState(false);
-
-  useEffect(() => {
-    listUsers()
-      .then(setUsers)
-      .catch(() => setError("Unable to load users."));
-  }, []);
 
   function handleChange(field, value) {
     setForm((f) => ({ ...f, [field]: value }));
@@ -50,7 +42,7 @@ export default function UserGroupCreate() {
         name: form.name,
         description: form.description,
         tag: form.tag,
-        userid_fk: form.userid_fk,
+        userid_fk: user.id,
         capability_ids: form.capability_ids,
       });
       notifySuccess("User group created successfully.");
@@ -101,20 +93,6 @@ export default function UserGroupCreate() {
               onChange={(e) => handleChange("tag", e.target.value)}
               fullWidth
             />
-            <TextField
-              select
-              label="Owner"
-              value={form.userid_fk}
-              onChange={(e) => handleChange("userid_fk", e.target.value)}
-              required
-              fullWidth
-            >
-              {users.map((u) => (
-                <MenuItem key={u.id} value={u.id}>
-                  {u.full_name || u.username}
-                </MenuItem>
-              ))}
-            </TextField>
 
             <Box sx={{ gridColumn: "1 / -1" }}>
               <CapabilitySelect
