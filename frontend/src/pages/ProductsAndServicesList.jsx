@@ -27,18 +27,9 @@ import DeleteIcon from "@mui/icons-material/Delete";
 import SearchIcon from "@mui/icons-material/Search";
 import { deleteProductsAndServices, listProductsAndServices } from "../api/masters";
 import ConfirmDialog from "../components/ConfirmDialog";
+import { collectOptions, matchesAny, matchesSearch } from "../utils/listFilters";
 
-// Distinct {id, name} options across every product's categories or brands.
-function collectOptions(items, key) {
-  const byId = new Map();
-  items.forEach((item) => (item[key] || []).forEach((option) => byId.set(option.id, option)));
-  return [...byId.values()].sort((a, b) => a.name.localeCompare(b.name));
-}
-
-// Several selections within one filter match any of them; an empty filter matches all.
-function matchesAny(links, selected) {
-  return selected.length === 0 || (links || []).some((link) => selected.some((s) => s.id === link.id));
-}
+const idsOf = (links) => (links || []).map((link) => link.id);
 
 export default function ProductsAndServicesList() {
   const navigate = useNavigate();
@@ -52,14 +43,13 @@ export default function ProductsAndServicesList() {
 
   const categoryOptions = useMemo(() => collectOptions(items, "categories"), [items]);
   const brandOptions = useMemo(() => collectOptions(items, "brands"), [items]);
-  const searchText = nameSearch.trim().toLowerCase();
   const filteredItems = items.filter(
     (item) =>
-      item.name.toLowerCase().includes(searchText) &&
-      matchesAny(item.categories, categoryFilter) &&
-      matchesAny(item.brands, brandFilter)
+      matchesSearch(item.name, nameSearch) &&
+      matchesAny(idsOf(item.categories), categoryFilter) &&
+      matchesAny(idsOf(item.brands), brandFilter)
   );
-  const filtersActive = searchText !== "" || categoryFilter.length > 0 || brandFilter.length > 0;
+  const filtersActive = nameSearch.trim() !== "" || categoryFilter.length > 0 || brandFilter.length > 0;
 
   function clearFilters() {
     setNameSearch("");
